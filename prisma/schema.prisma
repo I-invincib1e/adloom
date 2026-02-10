@@ -32,3 +32,25 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+model Sale {
+  id           String     @id @default(uuid())
+  title        String
+  discountType String
+  value        Float
+  status       String     @default("PENDING")
+  startTime    DateTime
+  endTime      DateTime
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  items        SaleItem[]
+}
+
+model SaleItem {
+  id            String @id @default(uuid())
+  saleId        String
+  sale          Sale   @relation(fields: [saleId], references: [id])
+  productId     String
+  variantId     String
+  originalPrice Float
+}
