@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData, useActionData, useSubmit, useNavigation } from "@remix-run/react";
+import { useLoaderData, useActionData, useSubmit, useNavigation, useNavigate } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getSale, updateSale, applySale, revertSale } from "../models/sale.server";
 import {
@@ -28,10 +28,73 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { SearchIcon } from "@shopify/polaris-icons";
 
 export async function loader({ request, params }) {
-  await authenticate.admin(request);
+  const { admin } = await authenticate.admin(request);
   const sale = await getSale(params.id);
   if (!sale) throw new Response("Sale not found", { status: 404 });
-  return json({ sale });
+
+  // Fetch product details from Shopify for display
+  const uniqueProductIds = [...new Set(sale.items.map(i => i.productId))];
+
+  const productMap = {};
+  for (const pid of uniqueProductIds) {
+    try {
+      const response = await admin.graphql(`
+        query getProduct($id: ID!) {
+          product(id: $id) {
+            id
+            title
+            featuredImage { url }
+            variants(first: 100) {
+              edges {
+                node {
+                  id
+                  title
+                  price
+                }
+              }
+            }
+          }
+        }
+      `, { variables: { id: pid } });
+      const data = await response.json();
+      if (data.data?.product) {
+        const p = data.data.product;
+        productMap[pid] = {
+          title: p.title,
+          image: p.featuredImage?.url || null,
+          variants: {},
+        };
+        p.variants.edges.forEach(({ node }) => {
+          productMap[pid].variants[node.id] = {
+            title: node.title,
+            price: node.price,
+          };
+        });
+      }
+    } catch (e) {
+      // If product was deleted, skip
+    }
+  }
+
+  // Enrich sale items with product details
+  const enrichedItems = sale.items.map(item => ({
+    ...item,
+    productTitle: productMap[item.productId]?.title || "Unknown product",
+    variantTitle: productMap[item.productId]?.variants[item.variantId]?.title || "Unknown variant",
+    image: productMap[item.productId]?.image || null,
+    currentPrice: productMap[item.productId]?.variants[item.variantId]?.price || null,
+  }));
+
+  // Get shop domain for preview
+  const session = await admin.rest.resources.Shop.all({ session: admin.session || {} }).catch(() => null);
+  let shopDomain = "";
+  try {
+    const shopRes = await admin.graphql(`{ shop { myshopifyDomain } }`);
+    const shopData = await shopRes.json();
+    shopDomain = shopData.data?.shop?.myshopifyDomain || "";
+  } catch {}
+
+  return json({ sale: { ...sale, items: enrichedItems }, shopDomain });
 }
 
 export async function action({ request, params }) {
@@ -105,16 +168,18 @@ export async function action({ request, params }) {
 }
 
 export default function EditSale() {
-  const { sale } = useLoaderData();
+  const { sale, shopDomain } = useLoaderData();
   const shopify = useAppBridge();
+  const navigate = useNavigate();
 
   // Pre-fill state from loaded sale
   const [selectedItems, setSelectedItems] = useState(
     sale.items.map(item => ({
       productId: item.productId,
       variantId: item.variantId,
-      productTitle: "",
-      variantTitle: "",
+      productTitle: item.productTitle || "",
+      variantTitle: item.variantTitle || "",
+      image: item.image || null,
       originalPrice: item.originalPrice,
     }))
   );
@@ -261,7 +326,10 @@ export default function EditSale() {
       secondaryActions={[
         {
           content: "Preview",
-          disabled: true,
+          onAction: () => {
+            if (shopDomain) window.open(`https://${shopDomain}`, "_blank");
+          },
+          disabled: !shopDomain,
         },
         ...(sale.status === "COMPLETED" || sale.status === "PENDING"
           ? [{
@@ -280,7 +348,7 @@ export default function EditSale() {
           : []),
         {
           content: "Duplicate",
-          disabled: true,
+          onAction: () => navigate(`/app/sales/new?duplicate=${sale.id}`),
         },
       ]}
     >
@@ -479,12 +547,37 @@ export default function EditSale() {
                     )}
 
                     {appliesToType === "products" && selectedItems.length > 0 && (
-                        <Box padding="200" background="bg-surface-secondary" borderRadius="200">
-                           <InlineStack align="space-between">
-                                <Text variant="bodySm">{selectedItems.length} variants selected</Text>
-                                <Button variant="plain" onClick={() => setSelectedItems([])}>Remove all</Button>
-                           </InlineStack>
-                        </Box>
+                        <BlockStack gap="200">
+                           <Box padding="200" background="bg-surface-secondary" borderRadius="200">
+                              <InlineStack align="space-between">
+                                   <Text variant="bodySm" fontWeight="semibold">{selectedItems.length} variants selected</Text>
+                                   <Button variant="plain" onClick={() => setSelectedItems([])}>Remove all</Button>
+                              </InlineStack>
+                           </Box>
+                           {selectedItems.slice(0, 20).map((item, idx) => (
+                             <Box key={item.variantId || idx} padding="200" background="bg-surface-secondary" borderRadius="200">
+                               <InlineStack gap="300" blockAlign="center" wrap={false}>
+                                 <Thumbnail
+                                   source={item.image || "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-product-1_small.png"}
+                                   alt={item.productTitle}
+                                   size="small"
+                                 />
+                                 <BlockStack gap="0">
+                                   <Text as="span" fontWeight="semibold" variant="bodySm">{item.productTitle}</Text>
+                                   {item.variantTitle && item.variantTitle !== "Default Title" && (
+                                     <Text as="span" variant="bodySm" tone="subdued">{item.variantTitle}</Text>
+                                   )}
+                                 </BlockStack>
+                                 <div style={{ marginLeft: "auto" }}>
+                                   <Text as="span" variant="bodySm" tone="subdued">${Number(item.originalPrice).toFixed(2)}</Text>
+                                 </div>
+                               </InlineStack>
+                             </Box>
+                           ))}
+                           {selectedItems.length > 20 && (
+                             <Text as="p" variant="bodySm" tone="subdued">...and {selectedItems.length - 20} more variants</Text>
+                           )}
+                        </BlockStack>
                      )}
 
                      {appliesToType === "collections" && selectedCollections.length > 0 && (
