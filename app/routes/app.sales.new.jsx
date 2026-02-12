@@ -20,6 +20,8 @@ import {
   Box,
   Collapsible,
   Icon,
+  Tag,
+  Thumbnail,
 } from "@shopify/polaris";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { SearchIcon } from "@shopify/polaris-icons";
@@ -47,27 +49,84 @@ export async function action({ request }) {
   const excludeOnSale = formData.get("excludeOnSale") === "true";
   const allowOverride = formData.get("allowOverride") === "true";
   const deactivationStrategy = formData.get("deactivationStrategy");
-  const timerId = formData.get("timerId"); // Not fully implemented in UI yet, but handled
+  const timerId = formData.get("timerId");
   const tagsToAdd = formData.get("tagsToAdd");
   const tagsToRemove = formData.get("tagsToRemove");
 
-  const items = JSON.parse(itemsString);
+  const appliesToType = formData.get("appliesToType");
+  const selectedCollections = JSON.parse(formData.get("selectedCollections") || "[]");
+  const selectedTags = JSON.parse(formData.get("selectedTags") || "[]");
+  const selectedVendors = JSON.parse(formData.get("selectedVendors") || "[]");
+
+  let items = JSON.parse(itemsString || "[]");
+
+  // Fetch products if items are empty but other selections exist
+  if (items.length === 0) {
+      if (appliesToType === "collections" && selectedCollections.length > 0) {
+          for (const collection of selectedCollections) {
+               const products = await admin.rest.resources.Product.all({
+                   session: admin.session,
+                   collection_id: collection.id.split("/").pop(), // Extract ID from GID
+                   limit: 50, // Fetch first 50 for now
+               });
+               products.data.forEach(product => {
+                   product.variants.forEach(variant => {
+                       items.push({
+                           productId: `gid://shopify/Product/${product.id}`,
+                           variantId: `gid://shopify/ProductVariant/${variant.id}`,
+                           productTitle: product.title,
+                           variantTitle: variant.title,
+                       });
+                   });
+               });
+          }
+      } else if (appliesToType === "tags" && selectedTags.length > 0) {
+           // Tag logic here (requires iterating tags or smart collection workaround)
+           // For simple implementation, we might skip or use Product.all({ tag: ... })
+           // Note: REST API supports simple filters.
+           const products = await admin.rest.resources.Product.all({ session: admin.session, limit: 250 });
+           // Filter manually for tags as REST API tag filtering can be tricky with multiple tags
+           products.data.forEach(product => {
+                const productTags = product.tags.split(",").map(t => t.trim());
+                if (selectedTags.some(tag => productTags.includes(tag))) {
+                    product.variants.forEach(variant => {
+                       items.push({
+                           productId: `gid://shopify/Product/${product.id}`,
+                           variantId: `gid://shopify/ProductVariant/${variant.id}`,
+                           productTitle: product.title,
+                           variantTitle: variant.title,
+                       });
+                   });
+                }
+           });
+      } else if (appliesToType === "vendors" && selectedVendors.length > 0) {
+           const products = await admin.rest.resources.Product.all({ session: admin.session, vendor: selectedVendors.join(","), limit: 250 });
+            products.data.forEach(product => {
+                product.variants.forEach(variant => {
+                   items.push({
+                       productId: `gid://shopify/Product/${product.id}`,
+                       variantId: `gid://shopify/ProductVariant/${variant.id}`,
+                       productTitle: product.title,
+                       variantTitle: variant.title,
+                   });
+                });
+           });
+      }
+  }
 
   const errors = {};
   if (!title) errors.title = "Title is required";
   if (!value) errors.value = "Value is required";
   if (!startTime) errors.startTime = "Start time is required";
-  // End time is optional in UI (checkbox), but model expects it. For now, require it or set far future?
-  // User prompt shows "Set end date" checkbox. Let's assume if not set, it's open-ended?
-  // Prisma model has endTime as DateTime (required). We'll fallback to a default if not set for now, or require it.
-  // Given user screenshots show "Set end date" unchecked by default, we might need nullable in schema, but schema says DateTime.
-  // I will require it for now to match current schema, or just set to 1 year from now if not provided.
   if (!endTime) errors.endTime = "End time is required"; 
-  if (!items || items.length === 0) errors.items = "Select at least one product";
+  if (items.length === 0) errors.items = "Select at least one product or collection";
 
   if (Object.keys(errors).length > 0) {
     return json({ errors });
   }
+
+  // Deduplicate items
+  const uniqueItems = Array.from(new Map(items.map(item => [item.variantId, item])).values());
 
   const sale = await createSale({
     title,
@@ -75,7 +134,7 @@ export async function action({ request }) {
     value,
     startTime,
     endTime,
-    items,
+    items: uniqueItems,
     overrideCents,
     discountStrategy,
     excludeDrafts,
@@ -135,6 +194,12 @@ export default function NewSale() {
   const navigation = useNavigation();
   const isLoading = navigation.state === "submitting";
 
+  const [selectedCollections, setSelectedCollections] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedVendors, setSelectedVendors] = useState([]);
+  const [tagInput, setTagInput] = useState("");
+  const [vendorInput, setVendorInput] = useState("");
+
   const selectProducts = async () => {
     const response = await shopify.resourcePicker({
       type: "product",
@@ -150,11 +215,32 @@ export default function NewSale() {
             variantId: variant.id,
             productTitle: product.title,
             variantTitle: variant.title,
+            image: product.images[0]?.originalSrc,
           });
         });
       });
       setSelectedItems(variants);
     }
+  };
+
+  const selectCollections = async () => {
+    const response = await shopify.resourcePicker({
+        type: "collection",
+        multiple: true,
+    });
+
+    if (response) {
+        setSelectedCollections(response);
+    }
+  };
+
+  const handleBrowse = () => {
+      if (appliesToType === "products") selectProducts();
+      else if (appliesToType === "collections") selectCollections();
+  };
+
+  const removeCollection = (id) => {
+      setSelectedCollections(selectedCollections.filter(c => c.id !== id));
   };
 
   const handleSubmit = () => {
@@ -177,6 +263,11 @@ export default function NewSale() {
     formData.append("deactivationStrategy", deactivationStrategy);
     formData.append("tagsToAdd", tagsToAdd);
     formData.append("tagsToRemove", tagsToRemove);
+
+    formData.append("appliesToType", appliesToType);
+    formData.append("selectedCollections", JSON.stringify(selectedCollections));
+    formData.append("selectedTags", JSON.stringify(selectedTags));
+    formData.append("selectedVendors", JSON.stringify(selectedVendors));
 
     submit(formData, { method: "post" });
   };
@@ -314,23 +405,105 @@ export default function NewSale() {
                              />
                          </div>
                          <div style={{ flex: 2 }}>
-                            <TextField
-                                value={""}
-                                placeholder="Search products"
-                                autoComplete="off"
-                                prefix={<Icon source={SearchIcon} />}
-                                connectedRight={<Button onClick={selectProducts}>Browse</Button>}
-                                label="Search"
-                                labelHidden
-                                disabled={appliesToType === "all"}
-                            />
+                            {appliesToType === "tags" ? (
+                                <TextField
+                                    value={tagInput}
+                                    onChange={setTagInput}
+                                    placeholder="Search tags"
+                                    autoComplete="off"
+                                    prefix={<Icon source={SearchIcon} />}
+                                    connectedRight={<Button onClick={() => {
+                                        if (tagInput && !selectedTags.includes(tagInput)) {
+                                            setSelectedTags([...selectedTags, tagInput]);
+                                            setTagInput("");
+                                        }
+                                    }}>Add</Button>}
+                                    label="Search tags"
+                                    labelHidden
+                                />
+                            ) : appliesToType === "vendors" ? (
+                                <TextField
+                                    value={vendorInput}
+                                    onChange={setVendorInput}
+                                    placeholder="Search vendors"
+                                    autoComplete="off"
+                                    prefix={<Icon source={SearchIcon} />}
+                                    connectedRight={<Button onClick={() => {
+                                        if (vendorInput && !selectedVendors.includes(vendorInput)) {
+                                            setSelectedVendors([...selectedVendors, vendorInput]);
+                                            setVendorInput("");
+                                        }
+                                    }}>Add</Button>}
+                                    label="Search vendors"
+                                    labelHidden
+                                />
+                            ) : (
+                                <TextField
+                                    value={""}
+                                    placeholder={appliesToType === "collections" ? "Search collections" : "Search products"}
+                                    autoComplete="off"
+                                    prefix={<Icon source={SearchIcon} />}
+                                    connectedRight={<Button onClick={handleBrowse} disabled={appliesToType === "all"}>Browse</Button>}
+                                    label="Search"
+                                    labelHidden
+                                    disabled={appliesToType === "all"}
+                                />
+                            )}
                          </div>
                     </InlineStack>
-                    
-                     {selectedItems.length > 0 && (
+
+                    {appliesToType === "collections" && (
+                        <Banner tone="info">
+                            <p><strong>Important!</strong></p>
+                            <p>Be aware that Shopify has an internal issue with filtering products in smart collections. <Button variant="plain" external>Read more</Button></p>
+                        </Banner>
+                    )}
+
+                    {/* Selected Items List */}
+                     {appliesToType === "products" && selectedItems.length > 0 && (
                         <Box padding="200" background="bg-surface-secondary" borderRadius="200">
-                           <Text variant="bodySm">{selectedItems.length} variants selected</Text>
+                           <InlineStack align="space-between">
+                                <Text variant="bodySm">{selectedItems.length} variants selected</Text>
+                                <Button variant="plain" onClick={() => setSelectedItems([])}>Remove all</Button>
+                           </InlineStack>
                         </Box>
+                     )}
+
+                     {appliesToType === "collections" && selectedCollections.length > 0 && (
+                        <BlockStack gap="200">
+                             <InlineStack align="space-between">
+                                <Checkbox label={`${selectedCollections.length} selected`} checked={true} disabled/>
+                                <Button size="slim" onClick={() => setSelectedCollections([])}>Remove collections</Button>
+                             </InlineStack>
+                             {selectedCollections.map(collection => (
+                                 <Box key={collection.id} padding="200" background="bg-surface-secondary" borderRadius="200">
+                                    <InlineStack gap="400" align="start" blockAlign="center">
+                                        <Checkbox checked={true} onChange={() => removeCollection(collection.id)}/>
+                                        <Thumbnail
+                                            source={collection.image?.originalSrc || "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-collection-1_small.png?format=webp&v=1530129177"}
+                                            alt={collection.title}
+                                        />
+                                        <Text fontWeight="bold" as="span">{collection.title}</Text>
+                                    </InlineStack>
+                                 </Box>
+                             ))}
+                        </BlockStack>
+                     )}
+                     
+                     {appliesToType === "tags" && selectedTags.length > 0 && (
+                        <InlineStack gap="200">
+                            {selectedTags.map(tag => (
+                                <Tag key={tag} onRemove={() => setSelectedTags(selectedTags.filter(t => t !== tag))}>{tag}</Tag>
+                            ))}
+                        </InlineStack>
+                     )}
+
+                     {appliesToType === "vendors" && selectedVendors.length > 0 && (
+                        <InlineStack gap="200">
+                            {selectedVendors.map(vendor => (
+                                <Tag key={vendor} onRemove={() => setSelectedVendors(selectedVendors.filter(v => v !== vendor))}>{vendor}</Tag>
+                            ))}
+                        </InlineStack>
                      )}
 
                     <BlockStack gap="200">
@@ -505,27 +678,53 @@ export default function NewSale() {
             <Card>
                  <BlockStack gap="400">
                     <Text as="h2" variant="headingSm">Product tags</Text>
-                    <TextField
-                        label="Tags to add during sale activation (removes upon deactivation)"
-                        placeholder="Search tags"
-                        value={tagsToAdd}
-                        onChange={setTagsToAdd}
-                         autoComplete="off"
-                         prefix={<Icon source={SearchIcon} />}
-                    />
-                     <TextField
-                        label="Tags to remove during sale activation (resets upon deactivation)"
-                        placeholder="Search tags"
-                        value={tagsToRemove}
-                        onChange={setTagsToRemove}
-                         autoComplete="off"
-                         prefix={<Icon source={SearchIcon} />}
-                    />
+                    
+                    <BlockStack gap="200">
+                        <Text as="p" variant="bodyMd">Tags to add during sale activation (removes upon deactivation)</Text>
+                         <TextField
+                            label="Tags to add"
+                            labelHidden
+                            placeholder="Search tags"
+                            value={tagsToAdd}
+                            onChange={setTagsToAdd}
+                            autoComplete="off"
+                            prefix={<Icon source={SearchIcon} />}
+                            helpText="Separate tags with comma"
+                        />
+                        {tagsToAdd && (
+                            <InlineStack gap="200">
+                                {tagsToAdd.split(",").filter(t => t.trim()).map((tag, i) => (
+                                    <Tag key={i}>{tag.trim()}</Tag>
+                                ))}
+                            </InlineStack>
+                        )}
+                    </BlockStack>
+
+                     <BlockStack gap="200">
+                        <Text as="p" variant="bodyMd">Tags to remove during sale activation (resets upon deactivation)</Text>
+                         <TextField
+                            label="Tags to remove"
+                            labelHidden
+                            placeholder="Search tags"
+                            value={tagsToRemove}
+                            onChange={setTagsToRemove}
+                            autoComplete="off"
+                            prefix={<Icon source={SearchIcon} />}
+                             helpText="Separate tags with comma"
+                        />
+                         {tagsToRemove && (
+                            <InlineStack gap="200">
+                                {tagsToRemove.split(",").filter(t => t.trim()).map((tag, i) => (
+                                    <Tag key={i}>{tag.trim()}</Tag>
+                                ))}
+                            </InlineStack>
+                        )}
+                    </BlockStack>
                  </BlockStack>
             </Card>
             
             <div style={{ marginTop: "1rem", marginBottom: "3rem" }}>
-                 <Button submit primary loading={isLoading} size="large">Create Discount</Button>
+                 <Button variant="primary" loading={isLoading} size="large" onClick={handleSubmit}>Create Discount</Button>
             </div>
 
           </BlockStack>
