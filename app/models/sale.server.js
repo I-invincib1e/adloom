@@ -178,6 +178,8 @@ export async function applySale(saleId, admin) {
     where: { id: saleId },
     data: { status: "ACTIVE" },
   });
+
+  return itemsToUpdate.length;
 }
 
 // Logic to revert the discount

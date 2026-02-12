@@ -89,11 +89,12 @@ export async function action({ request }) {
 
   const now = new Date();
   const start = new Date(startTime);
+  let updatedCount = 0;
   if (start <= now) {
-    await applySale(sale.id, admin);
+    updatedCount = await applySale(sale.id, admin);
   }
 
-  return redirect("/app");
+  return redirect(`/app?success=true&count=${updatedCount || 0}`);
 }
 
 export default function NewSale() {
@@ -127,6 +128,7 @@ export default function NewSale() {
   const [timerDisplay, setTimerDisplay] = useState("no-timer");
   const [tagsToAdd, setTagsToAdd] = useState("");
   const [tagsToRemove, setTagsToRemove] = useState("");
+  const [combinationsOpen, setCombinationsOpen] = useState(false);
 
   const submit = useSubmit();
   const actionData = useActionData();
@@ -298,7 +300,13 @@ export default function NewSale() {
                     <InlineStack gap="200">
                          <div style={{ flex: 1 }}>
                              <Select
-                                options={[{ label: "Products / Variants", value: "products" }]}
+                                options={[
+                                    { label: "Products / Variants", value: "products" },
+                                    { label: "Collections", value: "collections" },
+                                    { label: "Tags", value: "tags" },
+                                    { label: "Vendors", value: "vendors" },
+                                    { label: "Whole store", value: "all" },
+                                ]}
                                 value={appliesToType}
                                 onChange={setAppliesToType}
                                 label="Applies to"
@@ -314,6 +322,7 @@ export default function NewSale() {
                                 connectedRight={<Button onClick={selectProducts}>Browse</Button>}
                                 label="Search"
                                 labelHidden
+                                disabled={appliesToType === "all"}
                             />
                          </div>
                     </InlineStack>
@@ -348,7 +357,46 @@ export default function NewSale() {
             <Card>
                  <BlockStack gap="400">
                      <Text as="h2" variant="headingSm">Combinations</Text>
-                     <Text as="p" tone="subdued">How to prevent combining <strong>discount codes</strong> with products on sale. <Button variant="plain">Show instructions</Button></Text>
+                     <BlockStack gap="200">
+                        <Button 
+                            variant="plain" 
+                            onClick={() => setCombinationsOpen(!combinationsOpen)}
+                            textAlign="left"
+                        >
+                            <Text as="p" tone="subdued">How to prevent combining <strong>discount codes</strong> with products on sale. {combinationsOpen ? "Hide instructions" : "Show instructions"}</Text>
+                        </Button>
+                        <Collapsible open={combinationsOpen} id="combinations-collapsible">
+                            <Box paddingBlockStart="200">
+                                <Text as="p" variant="bodyMd">
+                                    Currently, Shopify doesn't have a native feature to directly restrict discount codes from being applied to sale items. However, you can achieve a similar outcome by configuring your discount codes to apply only to products that are not on sale (don't have compare-at price set). Here's how:
+                                </Text>
+                                <List type="number">
+                                    <List.Item>
+                                        <strong>Create an Automated Collection named "Not on sale":</strong>
+                                        <List type="bullet">
+                                            <List.Item>Go to your Shopify Admin panel.</List.Item>
+                                            <List.Item>Navigate to Products {">"} Collections.</List.Item>
+                                            <List.Item>Click on "Create Collection.”</List.Item>
+                                            <List.Item>Choose "Automated" as the collection type.</List.Item>
+                                            <List.Item>Set the condition to "Compare at price is empty." This condition ensures that only products not currently on sale will be included in this collection.</List.Item>
+                                        </List>
+                                    </List.Item>
+                                    <List.Item>
+                                        <strong>Restrict desired discount codes to this collection:</strong>
+                                        <List type="bullet">
+                                            <List.Item>In your Shopify Admin panel, go to Discounts.</List.Item>
+                                            <List.Item>Select the discount code you want to restrict.</List.Item>
+                                            <List.Item>Under Discount Details, go to Applies To.</List.Item>
+                                            <List.Item>Choose "Specific Collection" and select the "Not on sale" collection you created earlier.</List.Item>
+                                        </List>
+                                    </List.Item>
+                                </List>
+                                <Text as="p" variant="bodyMd" paddingBlockStart="200">
+                                    By following these steps, you can effectively limit the use of discount codes to products that are not currently on sale in your Shopify store.
+                                </Text>
+                            </Box>
+                        </Collapsible>
+                     </BlockStack>
                  </BlockStack>
             </Card>
 

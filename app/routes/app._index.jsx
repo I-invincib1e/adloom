@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { useLoaderData, useNavigate, useSubmit } from "@remix-run/react";
+import { useLoaderData, useNavigate, useSubmit, useSearchParams } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getSales, revertSale, deleteSale } from "../models/sale.server";
 import {
@@ -13,6 +13,8 @@ import {
   Text,
   EmptyState,
   Tabs,
+  Banner,
+  InlineStack,
 } from "@shopify/polaris";
 import { SetupGuide } from "../components/SetupGuide";
 import { useState, useCallback } from "react";
@@ -42,7 +44,20 @@ export default function Index() {
   const { sales } = useLoaderData();
   const navigate = useNavigate();
   const submit = useSubmit();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTab, setSelectedTab] = useState(0);
+
+  const showSuccessBanner = searchParams.get("success") === "true";
+  const updatedCount = searchParams.get("count");
+
+  const dismissBanner = useCallback(() => {
+    setSearchParams((prev) => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete("success");
+        newParams.delete("count");
+        return newParams;
+    });
+  }, [setSearchParams]);
 
   const tabs = [
     { id: "all-sales", content: "All", accessibilityLabel: "All sales" },
@@ -149,6 +164,23 @@ export default function Index() {
     <Page title="Sales">
       <Layout>
         <Layout.Section>
+          {showSuccessBanner && (
+             <div style={{ marginBottom: "1rem" }}>
+                <Banner
+                    tone="success"
+                    onDismiss={dismissBanner}
+                    title={`Sale has been activated, and ${updatedCount} prices have been updated.`}
+                >
+                    <p>Have the prices been updated correctly for the selected products?</p>
+                    <div style={{ marginTop: "0.5rem" }}>
+                         <InlineStack gap="200">
+                            <Button onClick={dismissBanner}>Everything is great</Button>
+                            <Button onClick={dismissBanner}>There is a problem</Button>
+                         </InlineStack>
+                    </div>
+                </Banner>
+             </div>
+          )}
           <SetupGuide salesCount={sales.length} />
           <Card padding="0">
             {sales.length === 0 ? (
