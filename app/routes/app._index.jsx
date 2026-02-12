@@ -1,7 +1,7 @@
 import { json } from "@remix-run/node";
 import { useLoaderData, useNavigate, useSubmit } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
-import { getSales, revertSale } from "../models/sale.server";
+import { getSales, revertSale, deleteSale } from "../models/sale.server";
 import {
   Page,
   Layout,
@@ -13,6 +13,7 @@ import {
   Text,
   EmptyState,
 } from "@shopify/polaris";
+import { SetupGuide } from "../components/SetupGuide";
 
 export async function loader({ request }) {
   await authenticate.admin(request);
@@ -28,6 +29,8 @@ export async function action({ request }) {
 
   if (action === "revert" && saleId) {
     await revertSale(saleId, admin);
+  } else if (action === "delete" && saleId) {
+    await deleteSale(saleId, admin);
   }
 
   return json({ success: true });
@@ -79,6 +82,11 @@ export default function Index() {
                     Revert
                 </Button>
             )}
+            <div style={{ marginLeft: "0.5rem", display: "inline-block" }}>
+              <Button size="micro" tone="critical" variant="plain" onClick={() => submit({ action: "delete", saleId: id }, { method: "post" })}>
+                  Delete
+              </Button>
+            </div>
         </IndexTable.Cell>
       </IndexTable.Row>
     )
@@ -101,6 +109,7 @@ export default function Index() {
     <Page title="Sales Dashboard">
       <Layout>
         <Layout.Section>
+          <SetupGuide salesCount={sales.length} />
           <Card padding="0">
             {sales.length === 0 ? (
                 emptyStateMarkup

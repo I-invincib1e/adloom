@@ -6,6 +6,18 @@ export async function getSales() {
   });
 }
 
+export async function deleteSale(saleId, admin) {
+  const sale = await prisma.sale.findUnique({ where: { id: saleId } });
+  if (!sale) return;
+
+  if (sale.status === "ACTIVE") {
+    await revertSale(saleId, admin);
+  }
+
+  await prisma.saleItem.deleteMany({ where: { saleId: saleId } });
+  await prisma.sale.delete({ where: { id: saleId } });
+}
+
 export async function createSale({ title, discountType, value, startTime, endTime, items }) {
   // items should be an array of { productId, variantId }
   return prisma.sale.create({
