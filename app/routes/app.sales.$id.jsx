@@ -1,0 +1,751 @@
+import { useState, useCallback } from "react";
+import { json, redirect } from "@remix-run/node";
+import { useLoaderData, useActionData, useSubmit, useNavigation } from "@remix-run/react";
+import { authenticate } from "../shopify.server";
+import { getSale, updateSale, applySale, revertSale } from "../models/sale.server";
+import {
+  Page,
+  Layout,
+  Card,
+  TextField,
+  Select,
+  Button,
+  BlockStack,
+  Banner,
+  List,
+  Checkbox,
+  RadioButton,
+  InlineStack,
+  Text,
+  Box,
+  Collapsible,
+  Icon,
+  Tag,
+  Thumbnail,
+  Badge,
+} from "@shopify/polaris";
+import { useAppBridge } from "@shopify/app-bridge-react";
+import { SearchIcon } from "@shopify/polaris-icons";
+
+export async function loader({ request, params }) {
+  await authenticate.admin(request);
+  const sale = await getSale(params.id);
+  if (!sale) throw new Response("Sale not found", { status: 404 });
+  return json({ sale });
+}
+
+export async function action({ request, params }) {
+  const { admin } = await authenticate.admin(request);
+  const formData = await request.formData();
+
+  const intent = formData.get("intent");
+
+  // Handle action buttons
+  if (intent === "deactivate") {
+    await revertSale(params.id, admin);
+    return json({ success: true, message: "Sale deactivated successfully." });
+  }
+
+  if (intent === "reactivate") {
+    const count = await applySale(params.id, admin);
+    return json({ success: true, message: `Sale reactivated. ${count} prices updated.` });
+  }
+
+  // Handle save/update
+  const title = formData.get("title");
+  const discountType = formData.get("discountType");
+  const value = formData.get("value");
+  const startTime = formData.get("startTime");
+  const endTime = formData.get("endTime");
+  const itemsString = formData.get("items");
+  const overrideCents = formData.get("overrideCents") === "true";
+  const discountStrategy = formData.get("discountStrategy");
+  const excludeDrafts = formData.get("excludeDrafts") === "true";
+  const excludeOnSale = formData.get("excludeOnSale") === "true";
+  const allowOverride = formData.get("allowOverride") === "true";
+  const deactivationStrategy = formData.get("deactivationStrategy");
+  const timerId = formData.get("timerId");
+  const tagsToAdd = formData.get("tagsToAdd");
+  const tagsToRemove = formData.get("tagsToRemove");
+
+  let items = JSON.parse(itemsString || "[]");
+
+  const errors = {};
+  if (!title) errors.title = "Title is required";
+  if (!value) errors.value = "Value is required";
+  if (!startTime) errors.startTime = "Start time is required";
+  if (!endTime) errors.endTime = "End time is required";
+  if (items.length === 0) errors.items = "Select at least one product or collection";
+
+  if (Object.keys(errors).length > 0) {
+    return json({ errors });
+  }
+
+  const uniqueItems = Array.from(new Map(items.map(item => [item.variantId, item])).values());
+
+  await updateSale(params.id, {
+    title,
+    discountType,
+    value,
+    startTime,
+    endTime,
+    items: uniqueItems,
+    overrideCents,
+    discountStrategy,
+    excludeDrafts,
+    excludeOnSale,
+    allowOverride,
+    deactivationStrategy,
+    timerId,
+    tagsToAdd,
+    tagsToRemove,
+  });
+
+  return json({ success: true, message: "Sale updated successfully." });
+}
+
+export default function EditSale() {
+  const { sale } = useLoaderData();
+  const shopify = useAppBridge();
+
+  // Pre-fill state from loaded sale
+  const [selectedItems, setSelectedItems] = useState(
+    sale.items.map(item => ({
+      productId: item.productId,
+      variantId: item.variantId,
+      productTitle: "",
+      variantTitle: "",
+      originalPrice: item.originalPrice,
+    }))
+  );
+  const [title, setTitle] = useState(sale.title);
+  const [discountType, setDiscountType] = useState(sale.discountType);
+  const [value, setValue] = useState(String(Math.abs(sale.value)));
+  const [overrideCents, setOverrideCents] = useState(sale.overrideCents);
+  const [discountStrategy, setDiscountStrategy] = useState(sale.discountStrategy);
+
+  // Applies To
+  const [appliesToType, setAppliesToType] = useState("products");
+  const [excludeDrafts, setExcludeDrafts] = useState(sale.excludeDrafts);
+  const [excludeOnSale, setExcludeOnSale] = useState(sale.excludeOnSale);
+  const [excludeCertainProducts, setExcludeCertainProducts] = useState(false);
+
+  // Dates
+  const startDT = new Date(sale.startTime);
+  const endDT = new Date(sale.endTime);
+  const [startDate, setStartDate] = useState(startDT.toISOString().split("T")[0]);
+  const [startTime, setStartTime] = useState(startDT.toTimeString().slice(0, 5));
+  const [endDate, setEndDate] = useState(endDT.toISOString().split("T")[0]);
+  const [endTime, setEndTime] = useState(endDT.toTimeString().slice(0, 5));
+  const [setEndTimer, setSetEndTimer] = useState(true);
+
+  // Activation / Deactivation
+  const [allowOverride, setAllowOverride] = useState(sale.allowOverride);
+  const [deactivationStrategy, setDeactivationStrategy] = useState(sale.deactivationStrategy);
+
+  // Timer & Tags
+  const [timerDisplay, setTimerDisplay] = useState("no-timer");
+  const [tagsToAdd, setTagsToAdd] = useState(sale.tagsToAdd || "");
+  const [tagsToRemove, setTagsToRemove] = useState(sale.tagsToRemove || "");
+  const [combinationsOpen, setCombinationsOpen] = useState(false);
+
+  const submit = useSubmit();
+  const actionData = useActionData();
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "submitting";
+
+  const [selectedCollections, setSelectedCollections] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedVendors, setSelectedVendors] = useState([]);
+  const [tagInput, setTagInput] = useState("");
+  const [vendorInput, setVendorInput] = useState("");
+
+  const selectProducts = async () => {
+    const response = await shopify.resourcePicker({
+      type: "product",
+      multiple: true,
+    });
+
+    if (response) {
+      const variants = [];
+      response.forEach((product) => {
+        product.variants.forEach((variant) => {
+          variants.push({
+            productId: product.id,
+            variantId: variant.id,
+            productTitle: product.title,
+            variantTitle: variant.title,
+            image: product.images[0]?.originalSrc,
+          });
+        });
+      });
+      setSelectedItems(variants);
+    }
+  };
+
+  const selectCollections = async () => {
+    const response = await shopify.resourcePicker({
+        type: "collection",
+        multiple: true,
+    });
+    if (response) {
+        setSelectedCollections(response);
+    }
+  };
+
+  const handleBrowse = () => {
+      if (appliesToType === "products") selectProducts();
+      else if (appliesToType === "collections") selectCollections();
+  };
+
+  const removeCollection = (id) => {
+      setSelectedCollections(selectedCollections.filter(c => c.id !== id));
+  };
+
+  const handleSubmit = () => {
+    const startDateTime = `${startDate}T${startTime}:00`;
+    const endDateTime = setEndTimer ? `${endDate}T${endTime}:00` : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+    const formData = new FormData();
+    formData.append("intent", "save");
+    formData.append("title", title);
+    formData.append("discountType", discountType);
+    formData.append("value", value);
+    formData.append("startTime", startDateTime);
+    formData.append("endTime", endDateTime);
+    formData.append("items", JSON.stringify(selectedItems));
+
+    formData.append("overrideCents", overrideCents.toString());
+    formData.append("discountStrategy", discountStrategy);
+    formData.append("excludeDrafts", excludeDrafts.toString());
+    formData.append("excludeOnSale", excludeOnSale.toString());
+    formData.append("allowOverride", allowOverride.toString());
+    formData.append("deactivationStrategy", deactivationStrategy);
+    formData.append("tagsToAdd", tagsToAdd);
+    formData.append("tagsToRemove", tagsToRemove);
+
+    formData.append("appliesToType", appliesToType);
+    formData.append("selectedCollections", JSON.stringify(selectedCollections));
+    formData.append("selectedTags", JSON.stringify(selectedTags));
+    formData.append("selectedVendors", JSON.stringify(selectedVendors));
+
+    submit(formData, { method: "post" });
+  };
+
+  const handleDeactivate = () => {
+    submit({ intent: "deactivate" }, { method: "post" });
+  };
+
+  const handleReactivate = () => {
+    submit({ intent: "reactivate" }, { method: "post" });
+  };
+
+  const statusBadge = () => {
+    switch (sale.status) {
+      case "ACTIVE":
+        return <Badge tone="success">Active</Badge>;
+      case "PENDING":
+        return <Badge tone="attention">Scheduled</Badge>;
+      case "COMPLETED":
+        return <Badge tone="warning">Expired</Badge>;
+      default:
+        return <Badge>{sale.status}</Badge>;
+    }
+  };
+
+  return (
+    <Page
+      backAction={{ url: "/app" }}
+      title={sale.title}
+      titleMetadata={statusBadge()}
+      secondaryActions={[
+        {
+          content: "Preview",
+          disabled: true,
+        },
+        ...(sale.status === "COMPLETED" || sale.status === "PENDING"
+          ? [{
+              content: "Reactivate",
+              onAction: handleReactivate,
+              loading: isLoading,
+            }]
+          : []),
+        ...(sale.status === "ACTIVE"
+          ? [{
+              content: "Deactivate",
+              onAction: handleDeactivate,
+              loading: isLoading,
+              destructive: true,
+            }]
+          : []),
+        {
+          content: "Duplicate",
+          disabled: true,
+        },
+      ]}
+    >
+      <Layout>
+        <Layout.Section>
+          <BlockStack gap="400">
+            {/* Success/action banner */}
+            {actionData?.success && (
+               <Banner tone="success" title={actionData.message}>
+                   <p>Have the prices been updated correctly for the selected products?</p>
+                   <div style={{ marginTop: "0.5rem" }}>
+                       <InlineStack gap="200">
+                           <Button size="slim" icon="👍">Everything is great</Button>
+                           <Button size="slim" icon="👎" variant="plain">There is a problem</Button>
+                       </InlineStack>
+                   </div>
+               </Banner>
+            )}
+
+            {actionData?.errors && (
+               <Banner tone="critical">
+                 <p>There were some errors with your submission</p>
+                  <ul>
+                    {Object.values(actionData.errors).map((err) => (
+                      <li key={err}>{err}</li>
+                    ))}
+                  </ul>
+               </Banner>
+             )}
+
+            <Card>
+              <BlockStack gap="200">
+                <Text as="h2" variant="headingSm">Title</Text>
+                <TextField
+                  label="Title"
+                  labelHidden
+                  value={title}
+                  onChange={setTitle}
+                  autoComplete="off"
+                  maxLength={255}
+                  showCharacterCount
+                  helpText="This title is not visible to the clients."
+                  error={actionData?.errors?.title}
+                />
+              </BlockStack>
+            </Card>
+
+            <Card>
+              <BlockStack gap="400">
+                 <Text as="h2" variant="headingSm">Discount value</Text>
+                 <InlineStack gap="400">
+                    <div style={{ flex: 1 }}>
+                        <Select
+                            label="Discount type"
+                            labelHidden
+                            options={[
+                              { label: "Percentage", value: "PERCENTAGE" },
+                              { label: "Fixed Amount", value: "FIXED_AMOUNT" },
+                            ]}
+                            value={discountType}
+                            onChange={setDiscountType}
+                        />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <TextField
+                            label="Value"
+                            labelHidden
+                            type="number"
+                            value={value}
+                            onChange={setValue}
+                            suffix={discountType === "PERCENTAGE" ? "%" : ""}
+                            autoComplete="off"
+                            error={actionData?.errors?.value}
+                        />
+                    </div>
+                 </InlineStack>
+                 <Checkbox
+                    label="Override cents"
+                    checked={overrideCents}
+                    onChange={setOverrideCents}
+                 />
+              </BlockStack>
+            </Card>
+
+            <Card>
+              <BlockStack gap="400">
+                 <InlineStack align="space-between">
+                    <Text as="h2" variant="headingSm">Discount strategy</Text>
+                     <Button variant="plain">Show example</Button>
+                 </InlineStack>
+                 <BlockStack gap="200">
+                    <RadioButton
+                        label="Calculate discount based on compare-at price"
+                        checked={discountStrategy === "COMPARE_AT"}
+                        id="strategy-compare-at"
+                        name="discountStrategy"
+                        onChange={() => setDiscountStrategy("COMPARE_AT")}
+                    />
+                    <RadioButton
+                        label="Discount current price but keep compare-at price unchanged"
+                        checked={discountStrategy === "KEEP_COMPARE_AT"}
+                        id="strategy-keep-compare-at"
+                        name="discountStrategy"
+                        onChange={() => setDiscountStrategy("KEEP_COMPARE_AT")}
+                    />
+                     <RadioButton
+                        label="Use current price as compare-at price and discount it"
+                        checked={discountStrategy === "USE_CURRENT_AS_COMPARE"}
+                        id="strategy-use-current"
+                        name="discountStrategy"
+                        onChange={() => setDiscountStrategy("USE_CURRENT_AS_COMPARE")}
+                    />
+                     <RadioButton
+                        label="Keep current price and increase compare-at price"
+                        checked={discountStrategy === "INCREASE_COMPARE"}
+                        id="strategy-increase-compare"
+                        name="discountStrategy"
+                        onChange={() => setDiscountStrategy("INCREASE_COMPARE")}
+                    />
+                 </BlockStack>
+              </BlockStack>
+            </Card>
+
+            <Card>
+                <BlockStack gap="400">
+                    <Text as="h2" variant="headingSm">Applies to</Text>
+                    <InlineStack gap="200">
+                         <div style={{ flex: 1 }}>
+                             <Select
+                                options={[
+                                    { label: "Products / Variants", value: "products" },
+                                    { label: "Collections", value: "collections" },
+                                    { label: "Tags", value: "tags" },
+                                    { label: "Vendors", value: "vendors" },
+                                    { label: "Whole store", value: "all" },
+                                ]}
+                                value={appliesToType}
+                                onChange={setAppliesToType}
+                                label="Applies to"
+                                labelHidden
+                             />
+                         </div>
+                         <div style={{ flex: 2 }}>
+                            {appliesToType === "tags" ? (
+                                <TextField
+                                    value={tagInput}
+                                    onChange={setTagInput}
+                                    placeholder="Search tags"
+                                    autoComplete="off"
+                                    prefix={<Icon source={SearchIcon} />}
+                                    connectedRight={<Button onClick={() => {
+                                        if (tagInput && !selectedTags.includes(tagInput)) {
+                                            setSelectedTags([...selectedTags, tagInput]);
+                                            setTagInput("");
+                                        }
+                                    }}>Add</Button>}
+                                    label="Search tags"
+                                    labelHidden
+                                />
+                            ) : appliesToType === "vendors" ? (
+                                <TextField
+                                    value={vendorInput}
+                                    onChange={setVendorInput}
+                                    placeholder="Search vendors"
+                                    autoComplete="off"
+                                    prefix={<Icon source={SearchIcon} />}
+                                    connectedRight={<Button onClick={() => {
+                                        if (vendorInput && !selectedVendors.includes(vendorInput)) {
+                                            setSelectedVendors([...selectedVendors, vendorInput]);
+                                            setVendorInput("");
+                                        }
+                                    }}>Add</Button>}
+                                    label="Search vendors"
+                                    labelHidden
+                                />
+                            ) : (
+                                <TextField
+                                    value={""}
+                                    placeholder={appliesToType === "collections" ? "Search collections" : "Search products"}
+                                    autoComplete="off"
+                                    prefix={<Icon source={SearchIcon} />}
+                                    connectedRight={<Button onClick={handleBrowse} disabled={appliesToType === "all"}>Browse</Button>}
+                                    label="Search"
+                                    labelHidden
+                                    disabled={appliesToType === "all"}
+                                />
+                            )}
+                         </div>
+                    </InlineStack>
+
+                    {appliesToType === "collections" && (
+                        <Banner tone="info">
+                            <p><strong>Important!</strong></p>
+                            <p>Be aware that Shopify has an internal issue with filtering products in smart collections. <Button variant="plain" external>Read more</Button></p>
+                        </Banner>
+                    )}
+
+                    {appliesToType === "products" && selectedItems.length > 0 && (
+                        <Box padding="200" background="bg-surface-secondary" borderRadius="200">
+                           <InlineStack align="space-between">
+                                <Text variant="bodySm">{selectedItems.length} variants selected</Text>
+                                <Button variant="plain" onClick={() => setSelectedItems([])}>Remove all</Button>
+                           </InlineStack>
+                        </Box>
+                     )}
+
+                     {appliesToType === "collections" && selectedCollections.length > 0 && (
+                        <BlockStack gap="200">
+                             <InlineStack align="space-between">
+                                <Checkbox label={`${selectedCollections.length} selected`} checked={true} disabled/>
+                                <Button size="slim" onClick={() => setSelectedCollections([])}>Remove collections</Button>
+                             </InlineStack>
+                             {selectedCollections.map(collection => (
+                                 <Box key={collection.id} padding="200" background="bg-surface-secondary" borderRadius="200">
+                                    <InlineStack gap="400" align="start" blockAlign="center">
+                                        <Checkbox checked={true} onChange={() => removeCollection(collection.id)}/>
+                                        <Thumbnail
+                                            source={collection.image?.originalSrc || "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-collection-1_small.png?format=webp&v=1530129177"}
+                                            alt={collection.title}
+                                        />
+                                        <Text fontWeight="bold" as="span">{collection.title}</Text>
+                                    </InlineStack>
+                                 </Box>
+                             ))}
+                        </BlockStack>
+                     )}
+
+                     {appliesToType === "tags" && selectedTags.length > 0 && (
+                        <InlineStack gap="200">
+                            {selectedTags.map(tag => (
+                                <Tag key={tag} onRemove={() => setSelectedTags(selectedTags.filter(t => t !== tag))}>{tag}</Tag>
+                            ))}
+                        </InlineStack>
+                     )}
+
+                     {appliesToType === "vendors" && selectedVendors.length > 0 && (
+                        <InlineStack gap="200">
+                            {selectedVendors.map(vendor => (
+                                <Tag key={vendor} onRemove={() => setSelectedVendors(selectedVendors.filter(v => v !== vendor))}>{vendor}</Tag>
+                            ))}
+                        </InlineStack>
+                     )}
+
+                    <BlockStack gap="200">
+                        <Text as="h3" variant="bodyMd" fontWeight="semibold">Exclude</Text>
+                         <Checkbox
+                            label="Exclude draft products from sale"
+                            checked={excludeDrafts}
+                            onChange={setExcludeDrafts}
+                         />
+                         <Checkbox
+                            label="Exclude product variants that are on sale (with a compare-at price set)"
+                            checked={excludeOnSale}
+                            onChange={setExcludeOnSale}
+                         />
+                         <Checkbox
+                            label="Exclude certain products from sale"
+                            checked={excludeCertainProducts}
+                            onChange={setExcludeCertainProducts}
+                         />
+                    </BlockStack>
+                </BlockStack>
+            </Card>
+
+            <Card>
+                 <BlockStack gap="400">
+                     <Text as="h2" variant="headingSm">Combinations</Text>
+                     <BlockStack gap="200">
+                        <Button
+                            variant="plain"
+                            onClick={() => setCombinationsOpen(!combinationsOpen)}
+                            textAlign="left"
+                        >
+                            <Text as="p" tone="subdued">How to prevent combining <strong>discount codes</strong> with products on sale. {combinationsOpen ? "Hide instructions" : "Show instructions"}</Text>
+                        </Button>
+                        <Collapsible open={combinationsOpen} id="combinations-collapsible">
+                            <Box paddingBlockStart="200">
+                                <Text as="p" variant="bodyMd">
+                                    Currently, Shopify doesn't have a native feature to directly restrict discount codes from being applied to sale items.
+                                </Text>
+                            </Box>
+                        </Collapsible>
+                     </BlockStack>
+                 </BlockStack>
+            </Card>
+
+            <Card>
+                 <BlockStack gap="400">
+                    <Text as="h2" variant="headingSm">Active dates</Text>
+                    <InlineStack gap="400">
+                        <div style={{ flex: 1 }}>
+                            <TextField
+                                label="Start date"
+                                type="date"
+                                value={startDate}
+                                onChange={setStartDate}
+                                autoComplete="off"
+                            />
+                        </div>
+                         <div style={{ flex: 1 }}>
+                            <TextField
+                                label="Start time"
+                                type="time"
+                                value={startTime}
+                                onChange={setStartTime}
+                                autoComplete="off"
+                            />
+                        </div>
+                    </InlineStack>
+                    <Checkbox
+                        label="Set end date"
+                        checked={setEndTimer}
+                        onChange={setSetEndTimer}
+                    />
+                    {setEndTimer && (
+                         <InlineStack gap="400">
+                            <div style={{ flex: 1 }}>
+                                <TextField
+                                    label="End date"
+                                    type="date"
+                                    value={endDate}
+                                    onChange={setEndDate}
+                                    autoComplete="off"
+                                />
+                            </div>
+                             <div style={{ flex: 1 }}>
+                                <TextField
+                                    label="End time"
+                                    type="time"
+                                    value={endTime}
+                                    onChange={setEndTime}
+                                    autoComplete="off"
+                                />
+                            </div>
+                        </InlineStack>
+                    )}
+                 </BlockStack>
+            </Card>
+
+            <Card>
+                <BlockStack gap="400">
+                    <Text as="h2" variant="headingSm">Activation</Text>
+                     <Checkbox
+                        label="Allow this sale to override other Rockit discounts"
+                        checked={allowOverride}
+                        onChange={setAllowOverride}
+                        helpText="By default, Rockit skips products already discounted by another active Rockit sale. When checked, this sale will override those existing discounts."
+                    />
+                </BlockStack>
+            </Card>
+
+             <Card>
+                <BlockStack gap="400">
+                    <Text as="h2" variant="headingSm">Deactivation</Text>
+                     <BlockStack gap="200">
+                        <RadioButton
+                            label="Restore prices exactly as they were before the sale activation"
+                            checked={deactivationStrategy === "RESTORE"}
+                            id="deactivate-restore"
+                            name="deactivationStrategy"
+                            onChange={() => setDeactivationStrategy("RESTORE")}
+                             helpText="If a product was already on sale, it will return to that sale price after deactivation."
+                        />
+                        <RadioButton
+                            label="Replace current price with compare-at price and remove compare-at value"
+                            checked={deactivationStrategy === "REPLACE_WITH_COMPARE"}
+                            id="deactivate-replace"
+                            name="deactivationStrategy"
+                            onChange={() => setDeactivationStrategy("REPLACE_WITH_COMPARE")}
+                        />
+                     </BlockStack>
+                </BlockStack>
+            </Card>
+
+             <Card>
+                <BlockStack gap="400">
+                    <Text as="h2" variant="headingSm">Product page timer</Text>
+                    <Text as="p" tone="subdued">The timer will be automatically configured with the sale's end date upon activation.</Text>
+                    <Select
+                        label="Timer display"
+                        labelHidden
+                        options={[{ label: "Display no timer", value: "no-timer" }]}
+                        value={timerDisplay}
+                        onChange={setTimerDisplay}
+                    />
+                </BlockStack>
+            </Card>
+
+            <Card>
+                 <BlockStack gap="400">
+                    <Text as="h2" variant="headingSm">Product tags</Text>
+
+                    <BlockStack gap="200">
+                        <Text as="p" variant="bodyMd">Tags to add during sale activation (removes upon deactivation)</Text>
+                         <TextField
+                            label="Tags to add"
+                            labelHidden
+                            placeholder="Search tags"
+                            value={tagsToAdd}
+                            onChange={setTagsToAdd}
+                            autoComplete="off"
+                            prefix={<Icon source={SearchIcon} />}
+                            helpText="Separate tags with comma"
+                        />
+                        {tagsToAdd && (
+                            <InlineStack gap="200">
+                                {tagsToAdd.split(",").filter(t => t.trim()).map((tag, i) => (
+                                    <Tag key={i}>{tag.trim()}</Tag>
+                                ))}
+                            </InlineStack>
+                        )}
+                    </BlockStack>
+
+                     <BlockStack gap="200">
+                        <Text as="p" variant="bodyMd">Tags to remove during sale activation (resets upon deactivation)</Text>
+                         <TextField
+                            label="Tags to remove"
+                            labelHidden
+                            placeholder="Search tags"
+                            value={tagsToRemove}
+                            onChange={setTagsToRemove}
+                            autoComplete="off"
+                            prefix={<Icon source={SearchIcon} />}
+                             helpText="Separate tags with comma"
+                        />
+                         {tagsToRemove && (
+                            <InlineStack gap="200">
+                                {tagsToRemove.split(",").filter(t => t.trim()).map((tag, i) => (
+                                    <Tag key={i}>{tag.trim()}</Tag>
+                                ))}
+                            </InlineStack>
+                        )}
+                    </BlockStack>
+                 </BlockStack>
+            </Card>
+
+            <div style={{ marginTop: "1rem", marginBottom: "3rem" }}>
+                 <Button variant="primary" loading={isLoading} size="large" onClick={handleSubmit}>Save Changes</Button>
+            </div>
+
+          </BlockStack>
+        </Layout.Section>
+
+        <Layout.Section variant="oneThird">
+             <Card>
+                <BlockStack gap="200">
+                    <Text as="h2" variant="headingSm">Summary</Text>
+                    <Text as="p" fontWeight="bold">{title || "No title yet"}</Text>
+                    <Text as="p" fontWeight="semibold">Details</Text>
+                    <List type="bullet">
+                        <List.Item>{value}{discountType === "PERCENTAGE" ? "%" : "$"} off {selectedItems.length} products</List.Item>
+                         <List.Item>Active from {new Date(`${startDate}T${startTime}`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</List.Item>
+                    </List>
+                </BlockStack>
+             </Card>
+             <div style={{ marginTop: "1rem" }}>
+                 <Card>
+                    <BlockStack gap="200">
+                        <Text as="p">Have an idea for a missing feature? We'd love to hear it!</Text>
+                        <Button variant="plain" external>Request a feature</Button>
+                    </BlockStack>
+                 </Card>
+             </div>
+        </Layout.Section>
+      </Layout>
+    </Page>
+  );
+}
