@@ -12,8 +12,10 @@ import {
   useIndexResourceState,
   Text,
   EmptyState,
+  Tabs,
 } from "@shopify/polaris";
 import { SetupGuide } from "../components/SetupGuide";
+import { useState, useCallback } from "react";
 
 export async function loader({ request }) {
   await authenticate.admin(request);
@@ -40,6 +42,32 @@ export default function Index() {
   const { sales } = useLoaderData();
   const navigate = useNavigate();
   const submit = useSubmit();
+  const [selectedTab, setSelectedTab] = useState(0);
+
+  const tabs = [
+    { id: "all-sales", content: "All", accessibilityLabel: "All sales" },
+    { id: "active-sales", content: "Active", accessibilityLabel: "Active sales" },
+    { id: "scheduled-sales", content: "Scheduled", accessibilityLabel: "Scheduled sales" },
+    { id: "expired-sales", content: "Expired", accessibilityLabel: "Expired sales" },
+  ];
+
+  const handleTabChange = useCallback(
+    (selectedTabIndex) => setSelectedTab(selectedTabIndex),
+    []
+  );
+
+  const filteredSales = sales.filter((sale) => {
+    switch (selectedTab) {
+      case 1: // Active
+        return sale.status === "ACTIVE";
+      case 2: // Scheduled
+        return sale.status === "PENDING"; // Assuming PENDING is Scheduled
+      case 3: // Expired
+        return sale.status === "COMPLETED"; // Assuming COMPLETED is Expired
+      default:
+        return true;
+    }
+  });
 
   const resourceName = {
     singular: "sale",
@@ -47,10 +75,19 @@ export default function Index() {
   };
 
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
-    useIndexResourceState(sales);
+    useIndexResourceState(filteredSales);
 
-  const rowMarkup = sales.map(
-    ({ id, title, discountType, value, status, startTime, endTime }, index) => (
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+    });
+  };
+
+  const rowMarkup = filteredSales.map(
+    ({ id, title, discountType, value, status, startTime, endTime, _count }, index) => (
       <IndexTable.Row
         id={id}
         key={id}
@@ -61,20 +98,23 @@ export default function Index() {
           <Text fontWeight="bold" as="span">
             {title}
           </Text>
+          <div style={{ fontSize: "12px", color: "#6d7175" }}>
+             {discountType === "PERCENTAGE" ? `${value}% off` : `$${value} off`}
+          </div>
         </IndexTable.Cell>
         <IndexTable.Cell>
-          {discountType === "PERCENTAGE" ? `${value}%` : `$${value}`}
-        </IndexTable.Cell>
-        <IndexTable.Cell>
-          <Badge tone={status === "ACTIVE" ? "success" : status === "PENDING" ? "attention" : "base"}>
-            {status}
+          <Badge tone={status === "ACTIVE" ? "success" : status === "PENDING" ? "attention" : "warning"}>
+            {status === "PENDING" ? "Scheduled" : status === "COMPLETED" ? "Expired" : "Active"}
           </Badge>
         </IndexTable.Cell>
         <IndexTable.Cell>
-          {new Date(startTime).toLocaleString()}
+          {formatDate(startTime)}
         </IndexTable.Cell>
         <IndexTable.Cell>
-          {new Date(endTime).toLocaleString()}
+          {formatDate(endTime)}
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+           <Text as="span" alignment="end">{_count?.items || 0}</Text>
         </IndexTable.Cell>
         <IndexTable.Cell>
             {status === "ACTIVE" && (
@@ -82,7 +122,7 @@ export default function Index() {
                     Revert
                 </Button>
             )}
-            <div style={{ marginLeft: "0.5rem", display: "inline-block" }}>
+             <div style={{ marginLeft: "0.5rem", display: "inline-block" }}>
               <Button size="micro" tone="critical" variant="plain" onClick={() => submit({ action: "delete", saleId: id }, { method: "post" })}>
                   Delete
               </Button>
@@ -106,7 +146,7 @@ export default function Index() {
   );
 
   return (
-    <Page title="Sales Dashboard">
+    <Page title="Sales">
       <Layout>
         <Layout.Section>
           <SetupGuide salesCount={sales.length} />
@@ -114,29 +154,33 @@ export default function Index() {
             {sales.length === 0 ? (
                 emptyStateMarkup
             ) : (
-                <IndexTable
-                  resourceName={resourceName}
-                  itemCount={sales.length}
-                  selectedItemsCount={
-                    allResourcesSelected ? "All" : selectedResources.length
-                  }
-                  onSelectionChange={handleSelectionChange}
-                  headings={[
-                    { title: "Title" },
-                    { title: "Discount" },
-                    { title: "Status" },
-                    { title: "Start Time" },
-                    { title: "End Time" },
-                    { title: "Actions" },
-                  ]}
-                >
-                  {rowMarkup}
-                </IndexTable>
+                <>
+                  <Tabs tabs={tabs} selected={selectedTab} onSelect={handleTabChange}>
+                  </Tabs>
+                  <IndexTable
+                    resourceName={resourceName}
+                    itemCount={filteredSales.length}
+                    selectedItemsCount={
+                      allResourcesSelected ? "All" : selectedResources.length
+                    }
+                    onSelectionChange={handleSelectionChange}
+                    headings={[
+                      { title: "Title" },
+                      { title: "Status" },
+                      { title: "Start time (EST)" },
+                      { title: "End time (EST)" },
+                      { title: "Variants on sale", alignment: "end" },
+                      { title: "Actions" },
+                    ]}
+                  >
+                    {rowMarkup}
+                  </IndexTable>
+                </>
             )}
           </Card>
-          {sales.length > 0 && (
-              <div style={{ marginTop: "1rem" }}>
-                 <Button primary onClick={() => navigate("/app/sales/new")}>Create New Sale</Button>
+           {sales.length > 0 && (
+              <div style={{ marginTop: "1rem", marginBottom: "2rem" }}>
+                 <Button variant="primary" onClick={() => navigate("/app/sales/new")}>Create sale</Button>
               </div>
           )}
         </Layout.Section>

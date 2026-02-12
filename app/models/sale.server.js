@@ -3,6 +3,7 @@ import prisma from "../db.server";
 export async function getSales() {
   return prisma.sale.findMany({
     orderBy: { createdAt: "desc" },
+    include: { _count: { select: { items: true } } },
   });
 }
 

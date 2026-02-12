@@ -15,6 +15,7 @@ import { ChevronDownIcon, ChevronUpIcon, XIcon, CheckIcon } from "@shopify/polar
 export function SetupGuide({ onDismiss, salesCount }) {
   const [openStep, setOpenStep] = useState(1);
   const [dismissed, setDismissed] = useState(false);
+  const [step3Checked, setStep3Checked] = useState(false);
 
   if (dismissed) return null;
 
@@ -26,12 +27,12 @@ export function SetupGuide({ onDismiss, salesCount }) {
   const step2Completed = salesCount > 0;
   // Step 1 is "How Rockit works" - treat as complete once viewed/interacted or just static 1/3?
   // The user prompt says "1 / 3 steps completed". Let's assume Step 1 is read/done.
-  const completedSteps = 1 + (step2Completed ? 1 : 0); 
+  const completedSteps = 1 + (step2Completed ? 1 : 0) + (step3Checked ? 1 : 0); 
   const progress = (completedSteps / 3) * 100;
 
   return (
-    <Card padding="400">
-      <BlockStack gap="400">
+    <Card padding="200">
+      <BlockStack gap="200">
         <InlineStack align="space-between">
           <BlockStack gap="100">
             <Text as="h2" variant="headingMd" fontWeight="semibold">
@@ -104,13 +105,15 @@ export function SetupGuide({ onDismiss, salesCount }) {
             stepNumber={3}
             title="Confirm the sale's working properly"
             isOpen={openStep === 3}
-            isCompleted={false}
+            isCompleted={step3Checked}
             onToggle={() => handleToggle(3)}
           >
-            <Text as="p" variant="bodyMd">
-              Check your storefront to verify the discounted prices and badges are showing correctly.
-            </Text>
-             <Button onClick={() => {}}>Mark as checked</Button>
+            <BlockStack gap="200">
+              <Text as="p" variant="bodyMd">
+                Check your storefront to verify the discounted prices and badges are showing correctly.
+              </Text>
+               <Button onClick={() => setStep3Checked(true)}>Mark as checked</Button>
+            </BlockStack>
           </StepItem>
         </BlockStack>
       </BlockStack>
