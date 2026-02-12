@@ -26,7 +26,6 @@ export default function App() {
         <Link to="/app/cart-savings">Cart savings</Link>
         <Link to="/app/pricing">Pricing plans</Link>
         <Link to="/app/help">Help & Support</Link>
-        <Link to="/app/setup">Setup Guide</Link>
       </NavMenu>
       <Outlet />
     </AppProvider>
