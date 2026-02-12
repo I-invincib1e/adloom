@@ -19,7 +19,23 @@ export async function deleteSale(saleId, admin) {
   await prisma.sale.delete({ where: { id: saleId } });
 }
 
-export async function createSale({ title, discountType, value, startTime, endTime, items }) {
+export async function createSale({
+  title,
+  discountType,
+  value,
+  startTime,
+  endTime,
+  items,
+  overrideCents,
+  discountStrategy,
+  excludeDrafts,
+  excludeOnSale,
+  allowOverride,
+  deactivationStrategy,
+  timerId,
+  tagsToAdd,
+  tagsToRemove,
+}) {
   // items should be an array of { productId, variantId }
   return prisma.sale.create({
     data: {
@@ -29,6 +45,15 @@ export async function createSale({ title, discountType, value, startTime, endTim
       startTime: new Date(startTime),
       endTime: new Date(endTime),
       status: "PENDING",
+      overrideCents: overrideCents === true,
+      discountStrategy,
+      excludeDrafts: excludeDrafts === true,
+      excludeOnSale: excludeOnSale === true,
+      allowOverride: allowOverride === true,
+      deactivationStrategy,
+      timerId,
+      tagsToAdd,
+      tagsToRemove,
       items: {
         create: items.map((item) => ({
           productId: item.productId,

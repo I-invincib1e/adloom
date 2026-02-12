@@ -44,6 +44,15 @@ model Sale {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   items        SaleItem[]
+  overrideCents    Boolean @default(false)
+  discountStrategy String  @default("COMPARE_AT") // COMPARE_AT, KEEP_COMPARE_AT, USE_CURRENT_AS_COMPARE, INCREASE_COMPARE
+  excludeDrafts    Boolean @default(false)
+  excludeOnSale    Boolean @default(false)
+  allowOverride    Boolean @default(false)
+  deactivationStrategy String @default("RESTORE") // RESTORE, REPLACE_WITH_COMPARE
+  timerId          String?
+  tagsToAdd        String? // JSON or comma-separated
+  tagsToRemove     String? // JSON or comma-separated
 }
 
 model SaleItem {
