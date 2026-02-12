@@ -110,11 +110,13 @@ export default function Index() {
         position={index}
       >
         <IndexTable.Cell>
-          <Button variant="plain" onClick={() => navigate(`/app/sales/${id}`)}>
-            <Text fontWeight="bold" as="span">
-              {title}
-            </Text>
-          </Button>
+          <div onClick={(e) => e.stopPropagation()} style={{ display: "inline" }}>
+            <Button variant="plain" onClick={() => navigate(`/app/sales/${id}`)}>
+              <Text fontWeight="bold" as="span">
+                {title}
+              </Text>
+            </Button>
+          </div>
           <div style={{ fontSize: "12px", color: "#6d7175" }}>
              {discountType === "PERCENTAGE" ? `${value}% off` : `$${value} off`}
           </div>

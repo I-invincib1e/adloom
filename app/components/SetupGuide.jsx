@@ -9,13 +9,36 @@ import {
   Collapsible,
   Icon,
 } from "@shopify/polaris";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDownIcon, ChevronUpIcon, XIcon, CheckIcon } from "@shopify/polaris-icons";
 
 export function SetupGuide({ onDismiss, salesCount }) {
   const [openStep, setOpenStep] = useState(1);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(true); // default hidden, will check localStorage
   const [step3Checked, setStep3Checked] = useState(false);
+
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("setupGuideDismissed");
+      const storedStep3 = localStorage.getItem("setupGuideStep3");
+      if (storedStep3 === "true") setStep3Checked(true);
+      setDismissed(stored === "true");
+    } catch {
+      setDismissed(false);
+    }
+  }, []);
+
+  const handleDismiss = () => {
+    try { localStorage.setItem("setupGuideDismissed", "true"); } catch {}
+    if (onDismiss) onDismiss();
+    setDismissed(true);
+  };
+
+  const handleStep3Check = () => {
+    setStep3Checked(true);
+    try { localStorage.setItem("setupGuideStep3", "true"); } catch {}
+  };
 
   if (dismissed) return null;
 
@@ -23,12 +46,14 @@ export function SetupGuide({ onDismiss, salesCount }) {
     setOpenStep(openStep === step ? null : step);
   };
 
-  // Determine completion based on logic (salesCount > 0 for step 2)
   const step2Completed = salesCount > 0;
-  // Step 1 is "How Rockit works" - treat as complete once viewed/interacted or just static 1/3?
-  // The user prompt says "1 / 3 steps completed". Let's assume Step 1 is read/done.
   const completedSteps = 1 + (step2Completed ? 1 : 0) + (step3Checked ? 1 : 0); 
   const progress = (completedSteps / 3) * 100;
+
+  // Auto-dismiss when all steps are done
+  if (completedSteps === 3 && !dismissed) {
+    setTimeout(() => handleDismiss(), 1500);
+  }
 
   return (
     <Card padding="200">
@@ -48,10 +73,7 @@ export function SetupGuide({ onDismiss, salesCount }) {
           <Button
             variant="plain"
             icon={XIcon}
-            onClick={() => {
-                if(onDismiss) onDismiss();
-                setDismissed(true);
-            }}
+            onClick={handleDismiss}
             accessibilityLabel="Dismiss setup guide"
           />
         </InlineStack>
@@ -112,7 +134,7 @@ export function SetupGuide({ onDismiss, salesCount }) {
               <Text as="p" variant="bodyMd">
                 Check your storefront to verify the discounted prices and badges are showing correctly.
               </Text>
-               <Button onClick={() => setStep3Checked(true)}>Mark as checked</Button>
+               <Button onClick={handleStep3Check}>Mark as checked</Button>
             </BlockStack>
           </StepItem>
         </BlockStack>
