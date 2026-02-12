@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { useLoaderData, useNavigate, useSubmit, useSearchParams } from "@remix-run/react";
+import { useLoaderData, useNavigate, useSubmit, useSearchParams, Link } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getSales, revertSale, deleteSale } from "../models/sale.server";
 import {
@@ -111,11 +111,11 @@ export default function Index() {
       >
         <IndexTable.Cell>
           <div onClick={(e) => e.stopPropagation()} style={{ display: "inline" }}>
-            <Button variant="plain" onClick={() => navigate(`/app/sales/${id}`)}>
+            <Link to={`/app/sales/${id}`} style={{ textDecoration: "none", color: "inherit" }}>
               <Text fontWeight="bold" as="span">
                 {title}
               </Text>
-            </Button>
+            </Link>
           </div>
           <div style={{ fontSize: "12px", color: "#6d7175" }}>
              {discountType === "PERCENTAGE" ? `${value}% off` : `$${value} off`}
