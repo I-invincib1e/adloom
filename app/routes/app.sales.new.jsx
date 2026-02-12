@@ -64,16 +64,37 @@ export async function action({ request }) {
   if (items.length === 0) {
       if (appliesToType === "collections" && selectedCollections.length > 0) {
           for (const collection of selectedCollections) {
-               const products = await admin.rest.resources.Product.all({
-                   session: admin.session,
-                   collection_id: collection.id.split("/").pop(), // Extract ID from GID
-                   limit: 50, // Fetch first 50 for now
-               });
-               products.data.forEach(product => {
-                   product.variants.forEach(variant => {
+               const collectionGid = collection.id;
+               const response = await admin.graphql(`
+                 query getCollectionProducts($id: ID!) {
+                   collection(id: $id) {
+                     products(first: 50) {
+                       edges {
+                         node {
+                           id
+                           title
+                           variants(first: 50) {
+                             edges {
+                               node {
+                                 id
+                                 title
+                               }
+                             }
+                           }
+                         }
+                       }
+                     }
+                   }
+                 }
+               `, { variables: { id: collectionGid } });
+               const data = await response.json();
+               const products = data?.data?.collection?.products?.edges || [];
+               products.forEach(({ node: product }) => {
+                   const variants = product.variants?.edges || [];
+                   variants.forEach(({ node: variant }) => {
                        items.push({
-                           productId: `gid://shopify/Product/${product.id}`,
-                           variantId: `gid://shopify/ProductVariant/${variant.id}`,
+                           productId: product.id,
+                           variantId: variant.id,
                            productTitle: product.title,
                            variantTitle: variant.title,
                        });
@@ -81,35 +102,74 @@ export async function action({ request }) {
                });
           }
       } else if (appliesToType === "tags" && selectedTags.length > 0) {
-           // Tag logic here (requires iterating tags or smart collection workaround)
-           // For simple implementation, we might skip or use Product.all({ tag: ... })
-           // Note: REST API supports simple filters.
-           const products = await admin.rest.resources.Product.all({ session: admin.session, limit: 250 });
-           // Filter manually for tags as REST API tag filtering can be tricky with multiple tags
-           products.data.forEach(product => {
-                const productTags = product.tags.split(",").map(t => t.trim());
-                if (selectedTags.some(tag => productTags.includes(tag))) {
-                    product.variants.forEach(variant => {
-                       items.push({
-                           productId: `gid://shopify/Product/${product.id}`,
-                           variantId: `gid://shopify/ProductVariant/${variant.id}`,
-                           productTitle: product.title,
-                           variantTitle: variant.title,
-                       });
-                   });
-                }
-           });
-      } else if (appliesToType === "vendors" && selectedVendors.length > 0) {
-           const products = await admin.rest.resources.Product.all({ session: admin.session, vendor: selectedVendors.join(","), limit: 250 });
-            products.data.forEach(product => {
-                product.variants.forEach(variant => {
+           const tagQuery = selectedTags.map(t => `tag:${t}`).join(" OR ");
+           const response = await admin.graphql(`
+             query getProductsByTag($query: String!) {
+               products(first: 50, query: $query) {
+                 edges {
+                   node {
+                     id
+                     title
+                     variants(first: 50) {
+                       edges {
+                         node {
+                           id
+                           title
+                         }
+                       }
+                     }
+                   }
+                 }
+               }
+             }
+           `, { variables: { query: tagQuery } });
+           const data = await response.json();
+           const products = data?.data?.products?.edges || [];
+           products.forEach(({ node: product }) => {
+               const variants = product.variants?.edges || [];
+               variants.forEach(({ node: variant }) => {
                    items.push({
-                       productId: `gid://shopify/Product/${product.id}`,
-                       variantId: `gid://shopify/ProductVariant/${variant.id}`,
+                       productId: product.id,
+                       variantId: variant.id,
                        productTitle: product.title,
                        variantTitle: variant.title,
                    });
-                });
+               });
+           });
+      } else if (appliesToType === "vendors" && selectedVendors.length > 0) {
+           const vendorQuery = selectedVendors.map(v => `vendor:${v}`).join(" OR ");
+           const response = await admin.graphql(`
+             query getProductsByVendor($query: String!) {
+               products(first: 50, query: $query) {
+                 edges {
+                   node {
+                     id
+                     title
+                     variants(first: 50) {
+                       edges {
+                         node {
+                           id
+                           title
+                         }
+                       }
+                     }
+                   }
+                 }
+               }
+             }
+           `, { variables: { query: vendorQuery } });
+           const data = await response.json();
+           const products = data?.data?.products?.edges || [];
+           products.forEach(({ node: product }) => {
+               const variants = product.variants?.edges || [];
+               variants.forEach(({ node: variant }) => {
+                   items.push({
+                       productId: product.id,
+                       variantId: variant.id,
+                       productTitle: product.title,
+                       variantTitle: variant.title,
+                   });
+               });
            });
       }
   }
