@@ -17,7 +17,8 @@ import {
   InlineStack,
 } from "@shopify/polaris";
 import { SetupGuide } from "../components/SetupGuide";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useAppBridge } from "@shopify/app-bridge-react";
 
 export async function loader({ request }) {
   await authenticate.admin(request);
@@ -46,9 +47,17 @@ export default function Index() {
   const submit = useSubmit();
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTab, setSelectedTab] = useState(0);
+  const shopify = useAppBridge();
 
   const showSuccessBanner = searchParams.get("success") === "true";
   const updatedCount = searchParams.get("count");
+
+  // Show toast on success and auto-dismiss URL params
+  useEffect(() => {
+    if (showSuccessBanner) {
+      shopify.toast.show(`Sale activated — ${updatedCount} prices updated`);
+    }
+  }, [showSuccessBanner]);
 
   const dismissBanner = useCallback(() => {
     setSearchParams((prev) => {
@@ -165,7 +174,13 @@ export default function Index() {
   );
 
   return (
-    <Page title="Sales">
+    <Page
+      title="Sales"
+      primaryAction={sales.length > 0 ? {
+        content: "Create sale",
+        onAction: () => navigate("/app/sales/new"),
+      } : undefined}
+    >
       <Layout>
         <Layout.Section>
           {showSuccessBanner && (
@@ -214,11 +229,6 @@ export default function Index() {
                 </>
             )}
           </Card>
-           {sales.length > 0 && (
-              <div style={{ marginTop: "1rem", marginBottom: "2rem" }}>
-                 <Button variant="primary" onClick={() => navigate("/app/sales/new")}>Create sale</Button>
-              </div>
-          )}
         </Layout.Section>
       </Layout>
     </Page>
