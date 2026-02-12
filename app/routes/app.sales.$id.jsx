@@ -293,8 +293,8 @@ export default function EditSale() {
                    <p>Have the prices been updated correctly for the selected products?</p>
                    <div style={{ marginTop: "0.5rem" }}>
                        <InlineStack gap="200">
-                           <Button size="slim" icon="👍">Everything is great</Button>
-                           <Button size="slim" icon="👎" variant="plain">There is a problem</Button>
+                           <Button size="slim">👍 Everything is great</Button>
+                           <Button size="slim" variant="plain">👎 There is a problem</Button>
                        </InlineStack>
                    </div>
                </Banner>
