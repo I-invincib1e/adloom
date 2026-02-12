@@ -65,6 +65,54 @@ export async function createSale({
   });
 }
 
+export async function updateSale(id, {
+  title,
+  discountType,
+  value,
+  startTime,
+  endTime,
+  items,
+  overrideCents,
+  discountStrategy,
+  excludeDrafts,
+  excludeOnSale,
+  allowOverride,
+  deactivationStrategy,
+  timerId,
+  tagsToAdd,
+  tagsToRemove,
+}) {
+  // Delete old items and re-create
+  await prisma.saleItem.deleteMany({ where: { saleId: id } });
+
+  return prisma.sale.update({
+    where: { id },
+    data: {
+      title,
+      discountType,
+      value: parseFloat(value),
+      startTime: new Date(startTime),
+      endTime: new Date(endTime),
+      overrideCents: overrideCents === true,
+      discountStrategy,
+      excludeDrafts: excludeDrafts === true,
+      excludeOnSale: excludeOnSale === true,
+      allowOverride: allowOverride === true,
+      deactivationStrategy,
+      timerId,
+      tagsToAdd,
+      tagsToRemove,
+      items: {
+        create: items.map((item) => ({
+          productId: item.productId,
+          variantId: item.variantId,
+          originalPrice: item.originalPrice || 0,
+        })),
+      },
+    },
+  });
+}
+
 export async function getSale(id) {
   return prisma.sale.findUnique({
     where: { id },
