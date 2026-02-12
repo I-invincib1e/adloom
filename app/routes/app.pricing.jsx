@@ -150,30 +150,37 @@ export default function PricingPage() {
     <Page title="Pricing plans" backAction={{ url: "/app" }}>
       <Layout>
         <Layout.Section>
-          <BlockStack gap="200">
+          <BlockStack gap="400">
             <Text as="p" variant="bodyMd" tone="subdued">
               Choose the plan that fits your store. All paid plans include a 3-day free trial.
             </Text>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "16px",
+            }}>
+              {plans.map((plan) => (
+                <div key={plan.name} style={plan.highlighted ? {
+                  border: "2px solid var(--p-color-border-interactive)",
+                  borderRadius: "12px",
+                } : {}}>
+                  <PlanCard plan={plan} />
+                </div>
+              ))}
+            </div>
+
+            <Box paddingBlockStart="200" paddingBlockEnd="600">
+              <BlockStack gap="200">
+                <Text as="p" variant="bodySm" tone="subdued" alignment="center">
+                  All plans include advanced filtering, product exclusion, sale scheduling, and product tagging.
+                </Text>
+                <Text as="p" variant="bodySm" tone="subdued" alignment="center">
+                  Need help choosing? <Button variant="plain" size="slim">Contact us</Button>
+                </Text>
+              </BlockStack>
+            </Box>
           </BlockStack>
-        </Layout.Section>
-
-        {plans.map((plan) => (
-          <Layout.Section key={plan.name} variant="oneQuarter">
-            <PlanCard plan={plan} />
-          </Layout.Section>
-        ))}
-
-        <Layout.Section>
-          <Box paddingBlockStart="400" paddingBlockEnd="800">
-            <BlockStack gap="200">
-              <Text as="p" variant="bodySm" tone="subdued" alignment="center">
-                All plans include advanced filtering, product exclusion, sale scheduling, and product tagging.
-              </Text>
-              <Text as="p" variant="bodySm" tone="subdued" alignment="center">
-                Need help choosing? <Button variant="plain" size="slim">Contact us</Button>
-              </Text>
-            </BlockStack>
-          </Box>
         </Layout.Section>
       </Layout>
     </Page>
