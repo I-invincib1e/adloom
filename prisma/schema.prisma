@@ -51,6 +51,7 @@ model Sale {
   allowOverride    Boolean @default(false)
   deactivationStrategy String @default("RESTORE") // RESTORE, REPLACE_WITH_COMPARE
   timerId          String?
+  timer            Timer?     @relation(fields: [timerId], references: [id])
   tagsToAdd        String? // JSON or comma-separated
   tagsToRemove     String? // JSON or comma-separated
 }
@@ -62,4 +63,15 @@ model SaleItem {
   productId     String
   variantId     String
   originalPrice Float
+}
+
+model Timer {
+  id           String   @id @default(uuid())
+  name         String
+  style        String   // JSON: colors, layout, font size, etc.
+  textTemplate String
+  position     String   // above_atc, below_price, below_title
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sales        Sale[]
 }
