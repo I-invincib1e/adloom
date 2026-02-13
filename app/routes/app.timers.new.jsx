@@ -7,7 +7,7 @@ import { Page } from "@shopify/polaris";
 
 export async function loader({ request }) {
   await authenticate.admin(request);
-  return null;
+  return json({});
 }
 
 export async function action({ request }) {

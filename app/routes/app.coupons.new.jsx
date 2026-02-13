@@ -1,0 +1,331 @@
+import { useState } from "react";
+import { json, redirect } from "@remix-run/node";
+import { useActionData, useNavigation, useSubmit } from "@remix-run/react";
+import { authenticate } from "../shopify.server";
+import { createCoupon } from "../models/coupon.server";
+import { useAppBridge } from "@shopify/app-bridge-react";
+import {
+  Page,
+  Layout,
+  Card,
+  TextField,
+  Button,
+  BlockStack,
+  InlineStack,
+  Text,
+  Box,
+  Banner,
+  Thumbnail,
+  Tag,
+} from "@shopify/polaris";
+
+export async function loader({ request }) {
+  await authenticate.admin(request);
+  return null;
+}
+
+export async function action({ request }) {
+  await authenticate.admin(request);
+  const formData = await request.formData();
+
+  const offerTitle = formData.get("offerTitle");
+  const couponCode = formData.get("couponCode");
+  const description = formData.get("description");
+  const startTime = formData.get("startTime");
+  const endTime = formData.get("endTime");
+  const productsStr = formData.get("products");
+
+  const errors = {};
+  if (!offerTitle) errors.offerTitle = "Offer title is required";
+  if (!couponCode) errors.couponCode = "Coupon code is required";
+  if (!startTime) errors.startTime = "Start time is required";
+  if (!endTime) errors.endTime = "End time is required";
+
+  if (Object.keys(errors).length > 0) {
+    return json({ errors });
+  }
+
+  const products = JSON.parse(productsStr || "[]");
+
+  await createCoupon({
+    offerTitle,
+    couponCode: couponCode.toUpperCase(),
+    description,
+    startTime,
+    endTime,
+    products,
+  });
+
+  return redirect("/app/coupons");
+}
+
+export default function NewCouponPage() {
+  const shopify = useAppBridge();
+  const submit = useSubmit();
+  const actionData = useActionData();
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "submitting";
+
+  const [offerTitle, setOfferTitle] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [description, setDescription] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("00:00");
+  const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("23:59");
+  const [selectedProducts, setSelectedProducts] = useState([]);
+
+  const selectProducts = async () => {
+    const response = await shopify.resourcePicker({
+      type: "product",
+      multiple: true,
+    });
+
+    if (response) {
+      const products = response.map((product) => ({
+        productId: product.id,
+        productTitle: product.title,
+        image: product.images[0]?.originalSrc || null,
+      }));
+      setSelectedProducts(products);
+    }
+  };
+
+  const handleSubmit = () => {
+    const startDateTime = `${startDate}T${startTime}:00`;
+    const endDateTime = `${endDate}T${endTime}:00`;
+
+    const formData = new FormData();
+    formData.append("offerTitle", offerTitle);
+    formData.append("couponCode", couponCode);
+    formData.append("description", description);
+    formData.append("startTime", startDateTime);
+    formData.append("endTime", endDateTime);
+    formData.append("products", JSON.stringify(selectedProducts));
+
+    submit(formData, { method: "post" });
+  };
+
+  return (
+    <Page title="Create Coupon" backAction={{ url: "/app/coupons" }}>
+      <Layout>
+        <Layout.Section>
+          <BlockStack gap="400">
+            {actionData?.errors && (
+              <Banner tone="critical">
+                <ul>
+                  {Object.values(actionData.errors).map((err) => (
+                    <li key={err}>{err}</li>
+                  ))}
+                </ul>
+              </Banner>
+            )}
+
+            <Card>
+              <BlockStack gap="400">
+                <Text as="h2" variant="headingSm">
+                  Offer details
+                </Text>
+                <TextField
+                  label="Offer title"
+                  value={offerTitle}
+                  onChange={setOfferTitle}
+                  autoComplete="off"
+                  placeholder="e.g. Buy 1 Get 1 Free"
+                  helpText="This message is shown to customers on the product page."
+                  error={actionData?.errors?.offerTitle}
+                />
+                <TextField
+                  label="Coupon code"
+                  value={couponCode}
+                  onChange={setCouponCode}
+                  autoComplete="off"
+                  placeholder="e.g. BYG1"
+                  helpText="Customers will copy this code at checkout. Auto-uppercased."
+                  error={actionData?.errors?.couponCode}
+                  monospaced
+                />
+                <TextField
+                  label="Description (optional)"
+                  value={description}
+                  onChange={setDescription}
+                  autoComplete="off"
+                  placeholder="Additional details about this offer"
+                  multiline={2}
+                />
+              </BlockStack>
+            </Card>
+
+            <Card>
+              <BlockStack gap="400">
+                <Text as="h2" variant="headingSm">
+                  Schedule
+                </Text>
+                <InlineStack gap="400">
+                  <div style={{ flex: 1 }}>
+                    <TextField
+                      label="Start date"
+                      type="date"
+                      value={startDate}
+                      onChange={setStartDate}
+                      autoComplete="off"
+                      error={actionData?.errors?.startTime}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <TextField
+                      label="Start time"
+                      type="time"
+                      value={startTime}
+                      onChange={setStartTime}
+                      autoComplete="off"
+                    />
+                  </div>
+                </InlineStack>
+                <InlineStack gap="400">
+                  <div style={{ flex: 1 }}>
+                    <TextField
+                      label="End date"
+                      type="date"
+                      value={endDate}
+                      onChange={setEndDate}
+                      autoComplete="off"
+                      error={actionData?.errors?.endTime}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <TextField
+                      label="End time"
+                      type="time"
+                      value={endTime}
+                      onChange={setEndTime}
+                      autoComplete="off"
+                    />
+                  </div>
+                </InlineStack>
+              </BlockStack>
+            </Card>
+
+            <Card>
+              <BlockStack gap="400">
+                <Text as="h2" variant="headingSm">
+                  Products
+                </Text>
+                <Text as="p" tone="subdued">
+                  Select which products this coupon should be displayed on.
+                </Text>
+                <Button onClick={selectProducts}>Browse products</Button>
+
+                {selectedProducts.length > 0 && (
+                  <BlockStack gap="200">
+                    <Box
+                      padding="200"
+                      background="bg-surface-secondary"
+                      borderRadius="200"
+                    >
+                      <InlineStack align="space-between">
+                        <Text variant="bodySm" fontWeight="semibold">
+                          {selectedProducts.length} products selected
+                        </Text>
+                        <Button
+                          variant="plain"
+                          onClick={() => setSelectedProducts([])}
+                        >
+                          Remove all
+                        </Button>
+                      </InlineStack>
+                    </Box>
+                    {selectedProducts.map((p, idx) => (
+                      <Box
+                        key={p.productId || idx}
+                        padding="200"
+                        background="bg-surface-secondary"
+                        borderRadius="200"
+                      >
+                        <InlineStack
+                          gap="300"
+                          blockAlign="center"
+                          wrap={false}
+                        >
+                          <Thumbnail
+                            source={
+                              p.image ||
+                              "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-product-1_small.png"
+                            }
+                            alt={p.productTitle}
+                            size="small"
+                          />
+                          <Text as="span" fontWeight="semibold" variant="bodySm">
+                            {p.productTitle}
+                          </Text>
+                        </InlineStack>
+                      </Box>
+                    ))}
+                  </BlockStack>
+                )}
+              </BlockStack>
+            </Card>
+          </BlockStack>
+        </Layout.Section>
+
+        <Layout.Section variant="oneThird">
+          <Card>
+            <BlockStack gap="300">
+              <Text as="h2" variant="headingSm">
+                Preview
+              </Text>
+              <Box
+                padding="400"
+                background="bg-surface-secondary"
+                borderRadius="200"
+              >
+                <BlockStack gap="200">
+                  <InlineStack align="space-between" blockAlign="center">
+                    <BlockStack gap="100">
+                      <Text as="span" fontWeight="bold" variant="bodySm">
+                        🎁 {offerTitle || "Your offer title"}
+                      </Text>
+                      {description && (
+                        <Text as="span" variant="bodySm" tone="subdued">
+                          {description}
+                        </Text>
+                      )}
+                    </BlockStack>
+                    <InlineStack gap="200">
+                      <div
+                        style={{
+                          background: "#f3f3f3",
+                          padding: "4px 10px",
+                          borderRadius: "4px",
+                          fontFamily: "monospace",
+                          fontSize: "13px",
+                          fontWeight: "bold",
+                          letterSpacing: "1px",
+                        }}
+                      >
+                        {couponCode || "CODE"}
+                      </div>
+                      <Button size="micro">Copy</Button>
+                    </InlineStack>
+                  </InlineStack>
+                </BlockStack>
+              </Box>
+            </BlockStack>
+          </Card>
+
+          <div style={{ marginTop: "16px" }}>
+            <Button
+              variant="primary"
+              size="large"
+              onClick={handleSubmit}
+              loading={isLoading}
+              fullWidth
+            >
+              Create Coupon
+            </Button>
+          </div>
+        </Layout.Section>
+      </Layout>
+    </Page>
+  );
+}

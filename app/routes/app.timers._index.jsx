@@ -62,7 +62,7 @@ export default function TimersPage() {
       heading="Create your first countdown timer"
       action={{
         content: "Create Timer",
-        url: "/app/timers/new",
+        onAction: () => navigate("/app/timers/new"),
       }}
       image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
     >
@@ -75,7 +75,7 @@ export default function TimersPage() {
       title="Timers"
       primaryAction={{
         content: "Create Timer",
-        url: "/app/timers/new",
+        onAction: () => navigate("/app/timers/new"),
       }}
     >
       <Layout>

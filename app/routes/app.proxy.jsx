@@ -1,7 +1,5 @@
 import { json } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
-import { getTimers } from "../models/timer.server";
-import { getSales } from "../models/sale.server";
 import db from "../db.server";
 
 export async function loader({ request }) {
@@ -12,18 +10,39 @@ export async function loader({ request }) {
   }
 
   const url = new URL(request.url);
+  const type = url.searchParams.get("type");
   const productId = url.searchParams.get("productId");
 
   if (!productId) {
     return json({ error: "Missing productId" }, { status: 400 });
   }
 
-  // Find active sales containing this product
-  // This is complex because products can be in sales via tags/collections/vendors.
-  // For V1, let's look for exact match in SaleItem.
-  // But wait, our SaleItem model stores `productId`.
-  
-  // Find active sales
+  // --- Coupon Offers ---
+  if (type === "coupons") {
+    const now = new Date();
+    const coupons = await db.coupon.findMany({
+      where: {
+        status: "ACTIVE",
+        startTime: { lte: now },
+        endTime: { gte: now },
+        products: {
+          some: {
+            productId: `gid://shopify/Product/${productId}`,
+          },
+        },
+      },
+    });
+
+    return json({
+      coupons: coupons.map((c) => ({
+        offerTitle: c.offerTitle,
+        couponCode: c.couponCode,
+        description: c.description,
+      })),
+    });
+  }
+
+  // --- Timer (default) ---
   const now = new Date();
   const sales = await db.sale.findMany({
     where: {
@@ -32,18 +51,17 @@ export async function loader({ request }) {
       endTime: { gte: now },
       items: {
         some: {
-          productId: `gid://shopify/Product/${productId}`
-        }
-      }
+          productId: `gid://shopify/Product/${productId}`,
+        },
+      },
     },
     include: {
-      timer: true 
-    }
+      timer: true,
+    },
   });
 
-  // If multiple sales, pick the one with a timer
-  const saleWithTimer = sales.find(s => s.timer);
-  
+  const saleWithTimer = sales.find((s) => s.timer);
+
   if (!saleWithTimer || !saleWithTimer.timer) {
     return json({ timer: null });
   }
@@ -52,6 +70,6 @@ export async function loader({ request }) {
     timer: {
       ...saleWithTimer.timer,
       endTime: saleWithTimer.endTime,
-    }
+    },
   });
 }

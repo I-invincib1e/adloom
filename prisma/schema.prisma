@@ -75,3 +75,23 @@ model Timer {
   updatedAt    DateTime @updatedAt
   sales        Sale[]
 }
+
+model Coupon {
+  id          String          @id @default(uuid())
+  offerTitle  String          // "Buy 1 Get 1"
+  couponCode  String          // "BYG1"
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  status      String          @default("ACTIVE")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  products    CouponProduct[]
+}
+
+model CouponProduct {
+  id        String @id @default(uuid())
+  couponId  String
+  coupon    Coupon @relation(fields: [couponId], references: [id])
+  productId String
+}

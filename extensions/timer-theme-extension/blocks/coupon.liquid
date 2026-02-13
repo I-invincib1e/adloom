@@ -1,0 +1,14 @@
+{% if product %}
+  <div class="rockit-coupons-wrapper" style="display: none;" data-product-id="{{ product.id }}" data-shop-domain="{{ shop.domain }}">
+  </div>
+  <script src="{{ 'coupon.js' | asset_url }}" defer="defer"></script>
+  {{ 'coupon.css' | asset_url | stylesheet_tag }}
+{% endif %}
+
+{% schema %}
+{
+  "name": "Coupon Offers",
+  "target": "section",
+  "settings": []
+}
+{% endschema %}
