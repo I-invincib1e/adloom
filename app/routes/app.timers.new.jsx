@@ -5,6 +5,11 @@ import { createTimer } from "../models/timer.server";
 import { TimerForm } from "../components/TimerForm";
 import { Page } from "@shopify/polaris";
 
+export async function loader({ request }) {
+  await authenticate.admin(request);
+  return null;
+}
+
 export async function action({ request }) {
   await authenticate.admin(request);
   const formData = await request.json(); // Use JSON submit

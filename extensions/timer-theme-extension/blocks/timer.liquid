@@ -1,0 +1,16 @@
+<div class="rockit-timer-wrapper" style="display: none;" data-product-id="{{ product.id }}">
+  <div class="rockit-timer-content">
+    <!-- Timer rendered by JS -->
+  </div>
+</div>
+
+<script src="{{ 'timer.js' | asset_url }}" defer="defer"></script>
+{{ 'timer.css' | asset_url | stylesheet_tag }}
+
+{% schema %}
+{
+  "name": "Countdown Timer",
+  "target": "section",
+  "settings": []
+}
+{% endschema %}

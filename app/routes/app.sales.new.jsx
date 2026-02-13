@@ -2,7 +2,8 @@ import { useState, useCallback } from "react";
 import { json, redirect } from "@remix-run/node";
 import { useActionData, useSubmit, useNavigation } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
-import { createSale, applySale } from "../models/sale.server"; // Ensure applySale is imported
+import { createSale, applySale } from "../models/sale.server"; 
+import { getTimers } from "../models/timer.server";
 import {
   Page,
   Layout,
@@ -28,7 +29,8 @@ import { SearchIcon } from "@shopify/polaris-icons";
 
 export async function loader({ request }) {
   await authenticate.admin(request);
-  return null;
+  const timers = await getTimers();
+  return json({ timers });
 }
 
 export async function action({ request }) {
@@ -244,7 +246,7 @@ export default function NewSale() {
   const [deactivationStrategy, setDeactivationStrategy] = useState("RESTORE");
 
   // Timer & Tags
-  const [timerDisplay, setTimerDisplay] = useState("no-timer");
+  const [timerId, setTimerId] = useState("");
   const [tagsToAdd, setTagsToAdd] = useState("");
   const [tagsToRemove, setTagsToRemove] = useState("");
   const [combinationsOpen, setCombinationsOpen] = useState(false);
@@ -321,6 +323,7 @@ export default function NewSale() {
     formData.append("excludeOnSale", excludeOnSale.toString());
     formData.append("allowOverride", allowOverride.toString());
     formData.append("deactivationStrategy", deactivationStrategy);
+    formData.append("timerId", timerId);
     formData.append("tagsToAdd", tagsToAdd);
     formData.append("tagsToRemove", tagsToRemove);
 
@@ -728,9 +731,12 @@ export default function NewSale() {
                     <Select
                         label="Timer display"
                         labelHidden
-                        options={[{ label: "Display no timer", value: "no-timer" }]}
-                        value={timerDisplay}
-                        onChange={setTimerDisplay}
+                        options={[
+                          { label: "Display no timer", value: "" },
+                          ...((useLoaderData()?.timers || []).map(t => ({ label: t.name, value: t.id })))
+                        ]}
+                        value={timerId}
+                        onChange={setTimerId}
                     />
                 </BlockStack>
             </Card>

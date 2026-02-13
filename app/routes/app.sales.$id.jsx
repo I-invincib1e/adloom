@@ -3,6 +3,7 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData, useSubmit, useNavigation, useNavigate } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getSale, updateSale, applySale, revertSale } from "../models/sale.server";
+import { getTimers } from "../models/timer.server";
 import {
   Page,
   Layout,
@@ -94,7 +95,8 @@ export async function loader({ request, params }) {
     shopDomain = shopData.data?.shop?.myshopifyDomain || "";
   } catch {}
 
-  return json({ sale: { ...sale, items: enrichedItems }, shopDomain });
+  const timers = await getTimers();
+  return json({ sale: { ...sale, items: enrichedItems }, shopDomain, timers });
 }
 
 export async function action({ request, params }) {
@@ -168,7 +170,7 @@ export async function action({ request, params }) {
 }
 
 export default function EditSale() {
-  const { sale, shopDomain } = useLoaderData();
+  const { sale, shopDomain, timers } = useLoaderData();
   const shopify = useAppBridge();
   const navigate = useNavigate();
 
@@ -209,7 +211,7 @@ export default function EditSale() {
   const [deactivationStrategy, setDeactivationStrategy] = useState(sale.deactivationStrategy);
 
   // Timer & Tags
-  const [timerDisplay, setTimerDisplay] = useState("no-timer");
+  const [timerId, setTimerId] = useState(sale.timerId || "");
   const [tagsToAdd, setTagsToAdd] = useState(sale.tagsToAdd || "");
   const [tagsToRemove, setTagsToRemove] = useState(sale.tagsToRemove || "");
   const [combinationsOpen, setCombinationsOpen] = useState(false);
@@ -286,6 +288,7 @@ export default function EditSale() {
     formData.append("excludeOnSale", excludeOnSale.toString());
     formData.append("allowOverride", allowOverride.toString());
     formData.append("deactivationStrategy", deactivationStrategy);
+    formData.append("timerId", timerId);
     formData.append("tagsToAdd", tagsToAdd);
     formData.append("tagsToRemove", tagsToRemove);
 
@@ -755,9 +758,12 @@ export default function EditSale() {
                     <Select
                         label="Timer display"
                         labelHidden
-                        options={[{ label: "Display no timer", value: "no-timer" }]}
-                        value={timerDisplay}
-                        onChange={setTimerDisplay}
+                        options={[
+                          { label: "Display no timer", value: "" },
+                          ...((timers || []).map(t => ({ label: t.name, value: t.id })))
+                        ]}
+                        value={timerId}
+                        onChange={setTimerId}
                     />
                 </BlockStack>
             </Card>
