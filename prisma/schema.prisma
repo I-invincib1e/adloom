@@ -41,6 +41,8 @@ model Sale {
   status       String     @default("PENDING")
   startTime    DateTime
   endTime      DateTime
+  processedItems Int      @default(0)
+  totalItems     Int      @default(0)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   items        SaleItem[]
@@ -81,6 +83,7 @@ model Coupon {
   offerTitle  String          // "Buy 1 Get 1"
   couponCode  String          // "BYG1"
   description String?
+  style       String?         // JSON: standard, dotted, ticket, minimal
   startTime   DateTime
   endTime     DateTime
   status      String          @default("ACTIVE")

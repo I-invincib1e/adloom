@@ -53,6 +53,7 @@ export async function action({ request }) {
     description,
     startTime,
     endTime,
+    style: formData.get("style"),
     products,
   });
 
@@ -73,6 +74,7 @@ export default function NewCouponPage() {
   const [startTime, setStartTime] = useState("00:00");
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("23:59");
+  const [style, setStyle] = useState("standard");
   const [selectedProducts, setSelectedProducts] = useState([]);
 
   const selectProducts = async () => {
@@ -101,6 +103,7 @@ export default function NewCouponPage() {
     formData.append("description", description);
     formData.append("startTime", startDateTime);
     formData.append("endTime", endDateTime);
+    formData.append("style", style);
     formData.append("products", JSON.stringify(selectedProducts));
 
     submit(formData, { method: "post" });
@@ -203,6 +206,25 @@ export default function NewCouponPage() {
                     />
                   </div>
                 </InlineStack>
+              </BlockStack>
+            </Card>
+
+            <Card>
+              <BlockStack gap="400">
+                <Text as="h2" variant="headingSm">
+                  Appearance
+                </Text>
+                <Select
+                  label="Coupon Style"
+                  options={[
+                    { label: "Standard (Solid)", value: "standard" },
+                    { label: "Dotted Border", value: "dotted" },
+                    { label: "Ticket Stub", value: "ticket" },
+                    { label: "Minimal (Text only)", value: "minimal" },
+                  ]}
+                  value={style}
+                  onChange={setStyle}
+                />
               </BlockStack>
             </Card>
 

@@ -19,3 +19,12 @@ export async function updateTimer(id, data) {
 export async function deleteTimer(id) {
   return db.timer.delete({ where: { id } });
 }
+
+export async function duplicateTimer(id) {
+  const source = await db.timer.findUnique({ where: { id } });
+  if (!source) throw new Error("Timer not found");
+  const { id: _id, createdAt, updatedAt, ...data } = source;
+  return db.timer.create({
+    data: { ...data, name: `${data.name} (Copy)` },
+  });
+}

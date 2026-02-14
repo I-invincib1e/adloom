@@ -12,6 +12,7 @@ import {
   RangeSlider,
   Tabs,
   Divider,
+  Banner,
 } from "@shopify/polaris";
 
 export function TimerForm({ timer, onSave, isLoading }) {
@@ -24,25 +25,27 @@ export function TimerForm({ timer, onSave, isLoading }) {
     ? JSON.parse(timer.style)
     : {
         // Content
-        title: "Limited time offer",
-        subtitle: "Sale ends in:",
+        title: "Flash Sale Ends Soon!",
+        subtitle: "Don't miss out on these deals",
         labels: {
-          days: "Days",
-          hours: "Hours",
-          minutes: "Minutes",
-          seconds: "Seconds",
+          days: "D",
+          hours: "H",
+          minutes: "M",
+          seconds: "S",
         },
 
-        // Style
-        backgroundColor: "#ffffff",
+        // Style (Banner Default)
+        backgroundColor: "#000000",
         borderColor: "#000000",
-        borderSize: 1,
-        borderRadius: 8,
-        titleColor: "#000000",
-        subtitleColor: "#666666",
-        timerColor: "#000000",
-        padding: 16,
+        borderSize: 0,
+        borderRadius: 0,
+        titleColor: "#ffffff",
+        subtitleColor: "#cccccc",
+        timerColor: "#ffffff",
+        padding: 12,
         fontSize: 16,
+        layoutMode: "banner", // New flag for render
+        preset: "bold",
       };
 
   const [config, setConfig] = useState(initialConfig);
@@ -77,6 +80,119 @@ export function TimerForm({ timer, onSave, isLoading }) {
   // Mock preview time
   const [timeLeft] = useState({ d: "02", h: "14", m: "30", s: "15" });
 
+  // --- Banner Presets ---
+  const PRESETS = {
+    standard: {
+      backgroundColor: "#f4f6f8", // Light gray background
+      borderColor: "#dbe1e6", // Subtle border
+      borderSize: 1,
+      borderRadius: 4,
+      titleColor: "#202223",
+      subtitleColor: "#6d7175",
+      timerColor: "#202223",
+      padding: 12,
+      fontSize: 16,
+    },
+    gradient: {
+      backgroundColor: "linear-gradient(90deg, #ff8a00, #e52e71)", 
+      borderColor: "transparent",
+      borderSize: 0,
+      borderRadius: 8,
+      titleColor: "#ffffff",
+      subtitleColor: "rgba(255,255,255,0.9)",
+      timerColor: "#ffffff",
+      padding: 14,
+      fontSize: 16,
+      className: "rockit-timer-gradient",
+    },
+    glass: {
+      backgroundColor: "rgba(255, 255, 255, 0.6)", // More opaque for visibility
+      borderColor: "rgba(0, 0, 0, 0.05)",
+      borderSize: 1,
+      borderRadius: 12,
+      titleColor: "#000000",
+      subtitleColor: "#444",
+      timerColor: "#000000",
+      padding: 14,
+      fontSize: 15,
+      className: "rockit-timer-glass",
+    },
+    neon: {
+      backgroundColor: "#000000",
+      borderColor: "#0ff",
+      borderSize: 1,
+      borderRadius: 4,
+      titleColor: "#0ff",
+      subtitleColor: "#0cc",
+      timerColor: "#fff",
+      padding: 16,
+      fontSize: 18,
+      className: "rockit-timer-neon",
+    },
+    minimal: {
+      backgroundColor: "#ffffff",
+      borderColor: "#e1e3e5", // Add border to minimal so it has a boundary
+      borderSize: 1,
+      borderRadius: 4,
+      titleColor: "#202223",
+      subtitleColor: "#6d7175",
+      timerColor: "#202223",
+      padding: 10,
+      fontSize: 14,
+    },
+  };
+
+  const handlePresetChange = (presetKey) => {
+    if (!PRESETS[presetKey]) return;
+    const preset = PRESETS[presetKey];
+    // Keep labels, overwrite styles
+    setConfig((prev) => ({
+      ...prev,
+      ...preset,
+      layoutMode: "banner",
+      preset: presetKey,
+      // If regular hex, set it. If gradient, we might need a separate field or logic.
+      // For now, assume render handles 'linear-gradient' string in backgroundColor style.
+    }));
+  };
+
+  // --- Color Picker Component ---
+  const ColorInput = ({ label, value, onChange }) => (
+    <div style={{ flex: 1 }}>
+      <TextField
+        label={label}
+        value={value}
+        onChange={onChange}
+        autoComplete="off"
+        prefix={
+          <div style={{ position: "relative", width: 24, height: 24 }}>
+             <div
+               style={{
+                 position: "absolute", inset: 0,
+                 background: value?.includes('gradient') ? value : value,
+                 borderRadius: 4,
+                 border: "1px solid #ddd",
+                 pointerEvents: "none",
+               }}
+             />
+             <input
+                type="color"
+                value={(!value || value.includes('gradient')) ? "#ffffff" : value} // Fallback for gradients
+                onChange={(e) => onChange(e.target.value)}
+                style={{
+                  position: "absolute", inset: 0,
+                  opacity: 0,
+                  cursor: "pointer",
+                  width: "100%", height: "100%",
+                  padding: 0, margin: 0, border: "none"
+                }}
+             />
+          </div>
+        }
+      />
+    </div>
+  );
+
   // --- Render Tabs ---
   const renderContentTab = () => (
     <FormLayout>
@@ -110,7 +226,7 @@ export function TimerForm({ timer, onSave, isLoading }) {
 
       <Box paddingBlockStart="400">
         <Text variant="headingSm" as="h3">
-          Time Labels
+          Time Labels (Short)
         </Text>
       </Box>
       <FormLayout.Group>
@@ -146,87 +262,52 @@ export function TimerForm({ timer, onSave, isLoading }) {
 
   const renderStyleTab = () => (
     <FormLayout>
+        <Select
+            label="Banner Preset"
+            options={[
+                { label: "Select a fascinating style...", value: "" },
+                { label: "Standard (Grey)", value: "standard" },
+                { label: "Sunset Gradient", value: "gradient" },
+                { label: "Glassmorphism", value: "glass" },
+                { label: "Cyber Neon", value: "neon" },
+                { label: "Minimalist", value: "minimal" },
+            ]}
+            value={config.preset}
+            onChange={handlePresetChange}
+        />
       <Box paddingBlockStart="200">
         <Text variant="headingSm" as="h3">
           Colors & Background
         </Text>
       </Box>
       <FormLayout.Group>
-        <TextField
-          label="Background"
+        <ColorInput
+          label="Background (or Gradient)"
           value={config.backgroundColor}
           onChange={(v) => handleConfigChange("backgroundColor", v)}
-          autoComplete="off"
-          prefix={
-            <div
-              style={{
-                width: 24,
-                height: 24,
-                background: config.backgroundColor,
-                borderRadius: 4,
-                border: "1px solid #ddd",
-              }}
-            />
-          }
         />
-        <TextField
+        <ColorInput
           label="Border"
           value={config.borderColor}
           onChange={(v) => handleConfigChange("borderColor", v)}
-          autoComplete="off"
-          prefix={
-            <div
-              style={{
-                width: 24,
-                height: 24,
-                background: config.borderColor,
-                borderRadius: 4,
-                border: "1px solid #ddd",
-              }}
-            />
-          }
         />
       </FormLayout.Group>
       <FormLayout.Group>
-        <TextField
+        <ColorInput
           label="Title Text"
           value={config.titleColor}
           onChange={(v) => handleConfigChange("titleColor", v)}
-          autoComplete="off"
-          prefix={
-            <div
-              style={{
-                width: 24,
-                height: 24,
-                background: config.titleColor,
-                borderRadius: 4,
-                border: "1px solid #ddd",
-              }}
-            />
-          }
         />
-        <TextField
+        <ColorInput
           label="Timer Digits"
           value={config.timerColor}
           onChange={(v) => handleConfigChange("timerColor", v)}
-          autoComplete="off"
-          prefix={
-            <div
-              style={{
-                width: 24,
-                height: 24,
-                background: config.timerColor,
-                borderRadius: 4,
-                border: "1px solid #ddd",
-              }}
-            />
-          }
         />
       </FormLayout.Group>
 
       <Box paddingBlockStart="400">
         <Text variant="headingSm" as="h3">
-          Dimensions
+          Dimensions & Spacing
         </Text>
       </Box>
       <RangeSlider
@@ -253,25 +334,90 @@ export function TimerForm({ timer, onSave, isLoading }) {
         max={50}
         output
       />
+      <RangeSlider
+        label="Font Size (px)"
+        value={config.fontSize}
+        onChange={(v) => handleConfigChange("fontSize", v)}
+        min={12}
+        max={32}
+        output
+      />
     </FormLayout>
   );
 
+  // Parse placement config from style JSON
+  const [cssSelector, setCssSelector] = useState(config.cssSelector || "");
+  const [embedPosition, setEmbedPosition] = useState(config.embedPosition || "before"); // Default to before (like announcement bar)
+
   const renderPlacementTab = () => (
-    <FormLayout>
-      <Select
-        label="Position on Product Page"
-        options={[
-          { label: "Below Price", value: "below_price" },
-          { label: "Below Title", value: "below_title" },
-          { label: "Above Add to Cart", value: "above_atc" },
-          { label: "Fixed Bar (Top)", value: "bar_top" },
-          { label: "Fixed Bar (Bottom)", value: "bar_bottom" },
-        ]}
-        value={position}
-        onChange={setPosition}
-        helpText="Choose where the timer appears on your product pages."
-      />
-    </FormLayout>
+    <BlockStack gap="600">
+      {/* --- App Block Section --- */}
+      <Card>
+        <BlockStack gap="300">
+          <Text as="h3" variant="headingMd">App Block (Recommended)</Text>
+          <Text as="p" tone="subdued">
+            Use the theme editor to drag and drop the Timer. For a banner effect, place it at the very top of the product page or in the Header section if supported.
+          </Text>
+          <Button
+            fullWidth
+            url="https://admin.shopify.com/themes/current/editor?context=apps"
+            external
+            target="_blank"
+          >
+            Open theme editor
+          </Button>
+        </BlockStack>
+      </Card>
+
+      {/* --- App Embed Section --- */}
+      <Card>
+        <BlockStack gap="400">
+          <Text as="h3" variant="headingMd">App Embed (Advanced)</Text>
+          <Text as="p" tone="subdued">
+            Use a CSS selector to inject the banner. Common selectors: <code>body</code> (top of page), <code>header</code>, or <code>.product-form</code>.
+          </Text>
+
+          <Button
+            url="https://admin.shopify.com/themes/current/editor?context=apps&activateAppId=timer-theme-extension"
+            external
+            target="_blank"
+          >
+            Activate App Embed
+          </Button>
+
+          <BlockStack gap="300">
+            <TextField
+              label="CSS Selector"
+              labelHidden
+              placeholder=".header-wrapper"
+              value={cssSelector}
+              onChange={(val) => {
+                setCssSelector(val);
+                handleConfigChange("cssSelector", val);
+              }}
+              autoComplete="off"
+              monospaced
+              helpText="Leave blank to rely on App Block."
+            />
+          </BlockStack>
+
+          <Select
+            label="Position"
+            options={[
+              { label: "Before element (Top)", value: "before" },
+              { label: "After element (Bottom)", value: "after" },
+              { label: "Inside (First child)", value: "first_child" },
+              { label: "Inside (Last child)", value: "last_child" },
+            ]}
+            value={embedPosition}
+            onChange={(val) => {
+              setEmbedPosition(val);
+              handleConfigChange("embedPosition", val);
+            }}
+          />
+        </BlockStack>
+      </Card>
+    </BlockStack>
   );
 
   return (
@@ -291,90 +437,63 @@ export function TimerForm({ timer, onSave, isLoading }) {
         </div>
 
         {/* --- Right Column: Preview --- */}
-        <div style={{ width: "380px", flexShrink: 0 }}>
+        <div style={{ width: "100%", maxWidth: "600px", flexShrink: 0 }}>
           <BlockStack gap="400">
-            <Card title="Live Preview">
-              <Box padding="400">
-                <BlockStack gap="400">
-                  {/* Mock Product Context */}
-                  <BlockStack gap="200">
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "200px",
-                        background: "#f4f4f4",
-                        borderRadius: "8px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#aaa",
-                        fontSize: "24px",
-                      }}
-                    >
-                      📷
-                    </div>
-                    <div
-                      style={{
-                        width: "70%",
-                        height: "12px",
-                        background: "#e3e3e3",
-                        borderRadius: "4px",
-                      }}
-                    ></div>
-                    <div
-                      style={{
-                        width: "40%",
-                        height: "12px",
-                        background: "#e3e3e3",
-                        borderRadius: "4px",
-                      }}
-                    ></div>
-                  </BlockStack>
-
-                  <Divider />
-
-                  {/* THE TIMER COMPONENT PREVIEW */}
+            <Card title="Live Banner Preview">
+              <Box padding="800" background="bg-surface-secondary">
+                 <div style={{ padding: "20px 0" }}>
+                  {/* THE TIMER BANNER COMPONENT PREVIEW */}
                   <div
                     style={{
-                      backgroundColor: config.backgroundColor,
+                      background: config.backgroundColor, // Supports gradients
                       border: `${config.borderSize}px solid ${config.borderColor}`,
                       borderRadius: `${config.borderRadius}px`,
                       padding: `${config.padding}px`,
-                      textAlign: "center",
+                      textAlign: "left",
                       color: config.titleColor,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                      boxShadow: config.className?.includes('neon') ? "0 0 10px rgba(255,255,255,0.5)" : "0 4px 12px rgba(0,0,0,0.1)",
+                      display: "flex",
+                      flexDirection: "row", // Banner style
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "16px",
+                      width: "100%",
+                      boxSizing: "border-box",
+                      backdropFilter: config.className?.includes('glass') ? "blur(10px)" : "none",
                     }}
                   >
-                    {config.title && (
-                      <div
-                        style={{
-                          fontSize: "16px",
-                          fontWeight: "bold",
-                          marginBottom: "4px",
-                          color: config.titleColor,
-                        }}
-                      >
-                        {config.title}
-                      </div>
-                    )}
-                    {config.subtitle && (
-                      <div
-                        style={{
-                          fontSize: "13px",
-                          marginBottom: "12px",
-                          color: config.subtitleColor,
-                        }}
-                      >
-                        {config.subtitle}
-                      </div>
-                    )}
+                    <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+                        {config.title && (
+                        <div
+                            style={{
+                            fontSize: `${config.fontSize}px`,
+                            fontWeight: "bold",
+                            color: config.titleColor,
+                            fontFamily: "inherit",
+                            marginBottom: "2px",
+                            }}
+                        >
+                            {config.title}
+                        </div>
+                        )}
+                        {config.subtitle && (
+                        <div
+                            style={{
+                            fontSize: `${Math.max(10, config.fontSize * 0.75)}px`,
+                            color: config.subtitleColor,
+                            }}
+                        >
+                            {config.subtitle}
+                        </div>
+                        )}
+                    </div>
 
                     <div
                       style={{
                         display: "flex",
-                        justifyContent: "center",
                         gap: "12px",
                         color: config.timerColor,
+                        alignItems: "center",
                       }}
                     >
                       {[
@@ -383,23 +502,25 @@ export function TimerForm({ timer, onSave, isLoading }) {
                         { val: timeLeft.m, label: config.labels.minutes },
                         { val: timeLeft.s, label: config.labels.seconds },
                       ].map((item, i) => (
-                        <div key={i} style={{ textAlign: "center" }}>
+                        <div key={i} style={{ textAlign: "center", minWidth: "30px" }}>
                           <div
                             style={{
-                              fontSize: "24px",
+                              fontSize: `${config.fontSize * 1.5}px`,
                               fontWeight: "800",
                               lineHeight: 1,
                               fontVariantNumeric: "tabular-nums",
+                              fontFamily: "monospace",
                             }}
                           >
                             {item.val}
                           </div>
                           <div
                             style={{
-                              fontSize: "10px",
+                              fontSize: "9px",
                               textTransform: "uppercase",
-                              marginTop: "4px",
+                              marginTop: "2px",
                               opacity: 0.8,
+                              letterSpacing: "0.5px",
                             }}
                           >
                             {item.label}
@@ -408,11 +529,7 @@ export function TimerForm({ timer, onSave, isLoading }) {
                       ))}
                     </div>
                   </div>
-
-                  <Button variant="primary" fullWidth>
-                    Add to cart
-                  </Button>
-                </BlockStack>
+                </div>
               </Box>
             </Card>
             <Button

@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { useLoaderData, useNavigate, useSubmit, useSearchParams, Link } from "@remix-run/react";
+import { useLoaderData, useNavigate, useSubmit, useSearchParams, useNavigation } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getSales, revertSale, deleteSale } from "../models/sale.server";
 import {
@@ -15,10 +15,38 @@ import {
   Tabs,
   Banner,
   InlineStack,
+  Modal,
+  BlockStack,
+  Tooltip,
+  Spinner,
 } from "@shopify/polaris";
 import { SetupGuide } from "../components/SetupGuide";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useAppBridge } from "@shopify/app-bridge-react";
+
+// Relative time helper
+function timeAgo(dateString) {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now - date;
+  const future = diffMs < 0;
+  const absDiff = Math.abs(diffMs);
+  const mins = Math.floor(absDiff / 60000);
+  const hours = Math.floor(absDiff / 3600000);
+  const days = Math.floor(absDiff / 86400000);
+
+  if (future) {
+    if (mins < 60) return `in ${mins}m`;
+    if (hours < 24) return `in ${hours}h`;
+    if (days < 30) return `in ${days}d`;
+    return `in ${Math.floor(days / 30)}mo`;
+  }
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
 
 export async function loader({ request }) {
   await authenticate.admin(request);
@@ -36,6 +64,16 @@ export async function action({ request }) {
     await revertSale(saleId, admin);
   } else if (action === "delete" && saleId) {
     await deleteSale(saleId, admin);
+  } else if (action === "bulkDeactivate") {
+    const ids = formData.get("ids")?.split(",") || [];
+    for (const id of ids) {
+      await revertSale(id, admin);
+    }
+  } else if (action === "bulkDelete") {
+    const ids = formData.get("ids")?.split(",") || [];
+    for (const id of ids) {
+      await deleteSale(id, admin);
+    }
   }
 
   return json({ success: true });
@@ -45,14 +83,31 @@ export default function Index() {
   const { sales } = useLoaderData();
   const navigate = useNavigate();
   const submit = useSubmit();
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === "submitting" || navigation.state === "loading";
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTab, setSelectedTab] = useState(0);
   const shopify = useAppBridge();
 
+  // Confirmation modal state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); // { type, ids, label }
+
+  // App embed prompt — shown once until dismissed
+  const [showEmbedBanner, setShowEmbedBanner] = useState(false);
+  useEffect(() => {
+    const dismissed = localStorage.getItem("rockit_embed_dismissed");
+    if (!dismissed) setShowEmbedBanner(true);
+  }, []);
+
+  const dismissEmbed = useCallback(() => {
+    localStorage.setItem("rockit_embed_dismissed", "true");
+    setShowEmbedBanner(false);
+  }, []);
+
   const showSuccessBanner = searchParams.get("success") === "true";
   const updatedCount = searchParams.get("count");
 
-  // Show toast on success and auto-dismiss URL params
   useEffect(() => {
     if (showSuccessBanner) {
       shopify.toast.show(`Sale activated — ${updatedCount} prices updated`);
@@ -68,11 +123,19 @@ export default function Index() {
     });
   }, [setSearchParams]);
 
+  // Tab counts
+  const counts = useMemo(() => ({
+    all: sales.length,
+    active: sales.filter(s => s.status === "ACTIVE").length,
+    scheduled: sales.filter(s => s.status === "PENDING").length,
+    expired: sales.filter(s => s.status === "COMPLETED").length,
+  }), [sales]);
+
   const tabs = [
-    { id: "all-sales", content: "All", accessibilityLabel: "All sales" },
-    { id: "active-sales", content: "Active", accessibilityLabel: "Active sales" },
-    { id: "scheduled-sales", content: "Scheduled", accessibilityLabel: "Scheduled sales" },
-    { id: "expired-sales", content: "Expired", accessibilityLabel: "Expired sales" },
+    { id: "all-sales", content: `All (${counts.all})`, accessibilityLabel: "All sales" },
+    { id: "active-sales", content: `Active (${counts.active})`, accessibilityLabel: "Active sales" },
+    { id: "scheduled-sales", content: `Scheduled (${counts.scheduled})`, accessibilityLabel: "Scheduled sales" },
+    { id: "expired-sales", content: `Expired (${counts.expired})`, accessibilityLabel: "Expired sales" },
   ];
 
   const handleTabChange = useCallback(
@@ -82,24 +145,78 @@ export default function Index() {
 
   const filteredSales = sales.filter((sale) => {
     switch (selectedTab) {
-      case 1: // Active
-        return sale.status === "ACTIVE";
-      case 2: // Scheduled
-        return sale.status === "PENDING"; // Assuming PENDING is Scheduled
-      case 3: // Expired
-        return sale.status === "COMPLETED"; // Assuming COMPLETED is Expired
-      default:
-        return true;
+      case 1: return sale.status === "ACTIVE";
+      case 2: return sale.status === "PENDING";
+      case 3: return sale.status === "COMPLETED";
+      default: return true;
     }
   });
 
-  const resourceName = {
-    singular: "sale",
-    plural: "sales",
-  };
+  const resourceName = { singular: "sale", plural: "sales" };
 
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
     useIndexResourceState(filteredSales);
+
+  // --- Confirmation helpers ---
+  const requestConfirm = (type, ids, label) => {
+    setConfirmAction({ type, ids, label });
+    setConfirmOpen(true);
+  };
+
+  const handleConfirm = () => {
+    if (!confirmAction) return;
+    const { type, ids } = confirmAction;
+
+    if (type === "deactivate") {
+      submit({ action: "revert", saleId: ids[0] }, { method: "post" });
+    } else if (type === "delete") {
+      submit({ action: "delete", saleId: ids[0] }, { method: "post" });
+    } else if (type === "bulkDeactivate") {
+      submit({ action: "bulkDeactivate", ids: ids.join(",") }, { method: "post" });
+    } else if (type === "bulkDelete") {
+      submit({ action: "bulkDelete", ids: ids.join(",") }, { method: "post" });
+    }
+
+    setConfirmOpen(false);
+    setConfirmAction(null);
+  };
+
+  const handleCancelConfirm = () => {
+    setConfirmOpen(false);
+    setConfirmAction(null);
+  };
+
+  // --- Bulk actions ---
+  const promotedBulkActions = [
+    {
+      content: "Deactivate selected",
+      onAction: () => {
+        const activeIds = selectedResources.filter(id =>
+          sales.find(s => s.id === id && s.status === "ACTIVE")
+        );
+        if (activeIds.length === 0) {
+          shopify.toast.show("No active sales selected", { isError: true });
+          return;
+        }
+        requestConfirm(
+          "bulkDeactivate",
+          activeIds,
+          `Deactivate ${activeIds.length} active sale${activeIds.length > 1 ? "s" : ""}?`
+        );
+      },
+    },
+    {
+      content: "Delete selected",
+      destructive: true,
+      onAction: () => {
+        requestConfirm(
+          "bulkDelete",
+          selectedResources,
+          `Delete ${selectedResources.length} sale${selectedResources.length > 1 ? "s" : ""}? This cannot be undone.`
+        );
+      },
+    },
+  ];
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -119,13 +236,7 @@ export default function Index() {
         position={index}
       >
         <IndexTable.Cell>
-          <div onClick={(e) => e.stopPropagation()} style={{ display: "inline" }}>
-            <Link to={`/app/sales/${id}`} style={{ textDecoration: "none", color: "inherit" }}>
-              <Text fontWeight="bold" as="span">
-                {title}
-              </Text>
-            </Link>
-          </div>
+          <Text fontWeight="bold" as="span">{title}</Text>
           <div style={{ fontSize: "12px", color: "#6d7175" }}>
              {discountType === "PERCENTAGE" ? `${value}% off` : `$${value} off`}
           </div>
@@ -136,25 +247,41 @@ export default function Index() {
           </Badge>
         </IndexTable.Cell>
         <IndexTable.Cell>
-          {formatDate(startTime)}
+          <Tooltip content={formatDate(startTime)}>
+            <Text as="span" tone="subdued">{timeAgo(startTime)}</Text>
+          </Tooltip>
         </IndexTable.Cell>
         <IndexTable.Cell>
-          {formatDate(endTime)}
+          <Tooltip content={formatDate(endTime)}>
+            <Text as="span" tone="subdued">{timeAgo(endTime)}</Text>
+          </Tooltip>
         </IndexTable.Cell>
         <IndexTable.Cell>
            <Text as="span" alignment="end">{_count?.items || 0}</Text>
         </IndexTable.Cell>
         <IndexTable.Cell>
+          <InlineStack gap="200">
+            <Button size="micro" onClick={() => navigate(`/app/sales/${id}`)}>Edit</Button>
             {status === "ACTIVE" && (
-                <Button size="micro" tone="critical" onClick={() => submit({ action: "revert", saleId: id }, { method: "post" })}>
-                    Revert
+                <Button
+                  size="micro"
+                  tone="critical"
+                  disabled={isSubmitting}
+                  onClick={() => requestConfirm("deactivate", [id], `Deactivate sale "${title}"?`)}
+                >
+                    Deactivate
                 </Button>
             )}
-             <div style={{ marginLeft: "0.5rem", display: "inline-block" }}>
-              <Button size="micro" tone="critical" variant="plain" onClick={() => submit({ action: "delete", saleId: id }, { method: "post" })}>
-                  Delete
-              </Button>
-            </div>
+            <Button
+              size="micro"
+              tone="critical"
+              variant="plain"
+              disabled={isSubmitting}
+              onClick={() => requestConfirm("delete", [id], `Delete sale "${title}"? This cannot be undone.`)}
+            >
+                Delete
+            </Button>
+          </InlineStack>
         </IndexTable.Cell>
       </IndexTable.Row>
     )
@@ -173,6 +300,11 @@ export default function Index() {
     </EmptyState>
   );
 
+  // Confirmation message based on action type
+  const confirmTitle = confirmAction?.type?.includes("Delete") || confirmAction?.type === "delete" || confirmAction?.type === "bulkDelete"
+    ? "Confirm delete"
+    : "Confirm deactivate";
+
   return (
     <Page
       title="Sales"
@@ -183,6 +315,28 @@ export default function Index() {
     >
       <Layout>
         <Layout.Section>
+          {showEmbedBanner && (
+            <div style={{ marginBottom: "1rem" }}>
+              <Banner
+                tone="info"
+                onDismiss={dismissEmbed}
+                title="Embed app on your storefront"
+              >
+                <p>To display timers and sale features on your store, the app needs to be embedded in your theme.</p>
+                <div style={{ marginTop: "0.5rem" }}>
+                  <InlineStack gap="200">
+                    <Button
+                      url="https://admin.shopify.com/themes/current/editor?context=apps"
+                      external
+                    >
+                      Embed app
+                    </Button>
+                    <Button onClick={dismissEmbed} variant="plain">Skip for now</Button>
+                  </InlineStack>
+                </div>
+              </Banner>
+            </div>
+          )}
           {showSuccessBanner && (
              <div style={{ marginBottom: "1rem" }}>
                 <Banner
@@ -215,6 +369,7 @@ export default function Index() {
                       allResourcesSelected ? "All" : selectedResources.length
                     }
                     onSelectionChange={handleSelectionChange}
+                    promotedBulkActions={promotedBulkActions}
                     headings={[
                       { title: "Title" },
                       { title: "Status" },
@@ -231,6 +386,34 @@ export default function Index() {
           </Card>
         </Layout.Section>
       </Layout>
+
+      {/* Confirmation Modal */}
+      <Modal
+        open={confirmOpen}
+        onClose={handleCancelConfirm}
+        title={confirmTitle}
+        primaryAction={{
+          content: confirmAction?.type?.includes("elete") ? "Delete" : "Deactivate",
+          destructive: true,
+          loading: isSubmitting,
+          onAction: handleConfirm,
+        }}
+        secondaryActions={[
+          { content: "Cancel", onAction: handleCancelConfirm, disabled: isSubmitting },
+        ]}
+      >
+        <Modal.Section>
+          <BlockStack gap="200">
+            <Text as="p">{confirmAction?.label}</Text>
+            {isSubmitting && (
+              <InlineStack gap="200" align="center">
+                <Spinner size="small" />
+                <Text as="span" tone="subdued">Processing…</Text>
+              </InlineStack>
+            )}
+          </BlockStack>
+        </Modal.Section>
+      </Modal>
     </Page>
   );
 }

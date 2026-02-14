@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { useLoaderData, useNavigate, useSubmit, Link } from "@remix-run/react";
+import { useLoaderData, useNavigate, useSubmit, useSearchParams } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getTimers, deleteTimer } from "../models/timer.server";
 import {
@@ -12,7 +12,29 @@ import {
   EmptyState,
   InlineStack,
   Badge,
+  Modal,
+  BlockStack,
+  Tooltip,
 } from "@shopify/polaris";
+import { useState, useCallback, useEffect } from "react";
+import { useAppBridge } from "@shopify/app-bridge-react";
+
+// Relative time helper
+function timeAgo(dateString) {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffMs = now - date;
+  const absDiff = Math.abs(diffMs);
+  const mins = Math.floor(absDiff / 60000);
+  const hours = Math.floor(absDiff / 3600000);
+  const days = Math.floor(absDiff / 86400000);
+
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
 
 export async function loader({ request }) {
   await authenticate.admin(request);
@@ -36,6 +58,50 @@ export default function TimersPage() {
   const { timers } = useLoaderData();
   const navigate = useNavigate();
   const submit = useSubmit();
+  const shopify = useAppBridge();
+  const [searchParams] = useSearchParams();
+
+  // Delete confirmation modal
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [timerToDelete, setTimerToDelete] = useState(null);
+
+  // Success toast on redirect
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      shopify.toast.show("Timer saved successfully");
+    }
+    if (searchParams.get("deleted") === "true") {
+      shopify.toast.show("Timer deleted");
+    }
+  }, [searchParams]);
+
+  const confirmDelete = useCallback((timer) => {
+    setTimerToDelete(timer);
+    setDeleteModalOpen(true);
+  }, []);
+
+  const handleDelete = useCallback(() => {
+    if (timerToDelete) {
+      submit({ action: "delete", id: timerToDelete.id }, { method: "post" });
+      shopify.toast.show(`"${timerToDelete.name}" deleted`);
+    }
+    setDeleteModalOpen(false);
+    setTimerToDelete(null);
+  }, [timerToDelete, submit, shopify]);
+
+  const cancelDelete = useCallback(() => {
+    setDeleteModalOpen(false);
+    setTimerToDelete(null);
+  }, []);
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+    });
+  };
 
   const rowMarkup = timers.map(
     ({ id, name, position, textTemplate, updatedAt }, index) => (
@@ -45,13 +111,24 @@ export default function TimersPage() {
         </IndexTable.Cell>
         <IndexTable.Cell>{position}</IndexTable.Cell>
         <IndexTable.Cell>
-           <Text tone="subdued">{textTemplate}</Text>
+           <Text tone="subdued">{textTemplate || "—"}</Text>
         </IndexTable.Cell>
         <IndexTable.Cell>
-           <div style={{ display: 'flex', gap: '8px' }}>
+          <Tooltip content={formatDate(updatedAt)}>
+            <Text as="span" tone="subdued">{timeAgo(updatedAt)}</Text>
+          </Tooltip>
+        </IndexTable.Cell>
+        <IndexTable.Cell>
+           <InlineStack gap="200">
              <Button size="micro" onClick={() => navigate(`/app/timers/${id}`)}>Edit</Button>
-             <Button size="micro" tone="critical" onClick={() => submit({ action: "delete", id }, { method: "post" })}>Delete</Button>
-           </div>
+             <Button
+               size="micro"
+               tone="critical"
+               onClick={() => confirmDelete({ id, name })}
+             >
+               Delete
+             </Button>
+           </InlineStack>
         </IndexTable.Cell>
       </IndexTable.Row>
     )
@@ -91,6 +168,7 @@ export default function TimersPage() {
                   { title: "Name" },
                   { title: "Position" },
                   { title: "Template" },
+                  { title: "Last edited" },
                   { title: "Actions" },
                 ]}
                 selectable={false}
@@ -101,6 +179,29 @@ export default function TimersPage() {
           </Card>
         </Layout.Section>
       </Layout>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={deleteModalOpen}
+        onClose={cancelDelete}
+        title="Delete timer"
+        primaryAction={{
+          content: "Delete",
+          destructive: true,
+          onAction: handleDelete,
+        }}
+        secondaryActions={[
+          { content: "Cancel", onAction: cancelDelete },
+        ]}
+      >
+        <Modal.Section>
+          <BlockStack gap="200">
+            <Text as="p">
+              Are you sure you want to delete "{timerToDelete?.name}"? This cannot be undone.
+            </Text>
+          </BlockStack>
+        </Modal.Section>
+      </Modal>
     </Page>
   );
 }

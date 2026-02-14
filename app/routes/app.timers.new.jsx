@@ -15,7 +15,7 @@ export async function action({ request }) {
   const formData = await request.json(); // Use JSON submit
   
   await createTimer(formData);
-  return redirect("/app/timers");
+  return redirect("/app/timers?success=true");
 }
 
 export default function NewTimerPage() {

@@ -29,74 +29,88 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { SearchIcon } from "@shopify/polaris-icons";
 
 export async function loader({ request, params }) {
+  console.log("Loading Sale:", params.id); // Debug Log
   const { admin } = await authenticate.admin(request);
-  const sale = await getSale(params.id);
-  if (!sale) throw new Response("Sale not found", { status: 404 });
-
-  // Fetch product details from Shopify for display
-  const uniqueProductIds = [...new Set(sale.items.map(i => i.productId))];
-
-  const productMap = {};
-  for (const pid of uniqueProductIds) {
-    try {
-      const response = await admin.graphql(`
-        query getProduct($id: ID!) {
-          product(id: $id) {
-            id
-            title
-            featuredImage { url }
-            variants(first: 100) {
-              edges {
-                node {
-                  id
-                  title
-                  price
-                }
-              }
-            }
-          }
-        }
-      `, { variables: { id: pid } });
-      const data = await response.json();
-      if (data.data?.product) {
-        const p = data.data.product;
-        productMap[pid] = {
-          title: p.title,
-          image: p.featuredImage?.url || null,
-          variants: {},
-        };
-        p.variants.edges.forEach(({ node }) => {
-          productMap[pid].variants[node.id] = {
-            title: node.title,
-            price: node.price,
-          };
-        });
-      }
-    } catch (e) {
-      // If product was deleted, skip
-    }
-  }
-
-  // Enrich sale items with product details
-  const enrichedItems = sale.items.map(item => ({
-    ...item,
-    productTitle: productMap[item.productId]?.title || "Unknown product",
-    variantTitle: productMap[item.productId]?.variants[item.variantId]?.title || "Unknown variant",
-    image: productMap[item.productId]?.image || null,
-    currentPrice: productMap[item.productId]?.variants[item.variantId]?.price || null,
-  }));
-
-  // Get shop domain for preview
-  const session = await admin.rest.resources.Shop.all({ session: admin.session || {} }).catch(() => null);
-  let shopDomain = "";
+  
   try {
-    const shopRes = await admin.graphql(`{ shop { myshopifyDomain } }`);
-    const shopData = await shopRes.json();
-    shopDomain = shopData.data?.shop?.myshopifyDomain || "";
-  } catch {}
+    const sale = await getSale(params.id);
+    if (!sale) {
+        console.error("Sale not found for ID:", params.id);
+        throw new Response("Sale not found", { status: 404 });
+    }
+    
+    // ... existing logic ...
+    // Fetch product details from Shopify for display
+    const uniqueProductIds = [...new Set(sale.items.map(i => i.productId))];
 
-  const timers = await getTimers();
-  return json({ sale: { ...sale, items: enrichedItems }, shopDomain, timers });
+    const productMap = {};
+    for (const pid of uniqueProductIds) {
+        // ... existing logic ...
+        try {
+            const response = await admin.graphql(`
+                query getProduct($id: ID!) {
+                  product(id: $id) {
+                    id
+                    title
+                    featuredImage { url }
+                    variants(first: 100) {
+                      edges {
+                        node {
+                          id
+                          title
+                          price
+                        }
+                      }
+                    }
+                  }
+                }
+            `, { variables: { id: pid } });
+            
+            const data = await response.json();
+            if (data.data?.product) {
+                const p = data.data.product;
+                productMap[pid] = {
+                    title: p.title,
+                    image: p.featuredImage?.url || null,
+                    variants: {},
+                };
+                p.variants.edges.forEach(({ node }) => {
+                    productMap[pid].variants[node.id] = {
+                        title: node.title,
+                        price: node.price,
+                    };
+                });
+            }
+        } catch (e) {
+            // If product was deleted, skip
+            console.error("Error fetching product:", pid, e);
+        }
+    }
+
+    // Enrich sale items with product details
+    const enrichedItems = sale.items.map(item => ({
+        ...item,
+        productTitle: productMap[item.productId]?.title || "Unknown product",
+        variantTitle: productMap[item.productId]?.variants[item.variantId]?.title || "Unknown variant",
+        image: productMap[item.productId]?.image || null,
+        currentPrice: productMap[item.productId]?.variants[item.variantId]?.price || null,
+    }));
+
+    // Get shop domain for preview
+    const session = await admin.rest.resources.Shop.all({ session: admin.session || {} }).catch(() => null);
+    let shopDomain = "";
+    try {
+        const shopRes = await admin.graphql(`{ shop { myshopifyDomain } }`);
+        const shopData = await shopRes.json();
+        shopDomain = shopData.data?.shop?.myshopifyDomain || "";
+    } catch {}
+
+    const timers = await getTimers();
+    return json({ sale: { ...sale, items: enrichedItems }, shopDomain, timers });
+  } catch (error) {
+    console.error("Loader Error:", error);
+    throw error; 
+  }
 }
 
 export async function action({ request, params }) {

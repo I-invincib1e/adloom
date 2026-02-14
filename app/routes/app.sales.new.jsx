@@ -1,6 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { json, redirect } from "@remix-run/node";
-import { useActionData, useSubmit, useNavigation } from "@remix-run/react";
+import { useActionData, useSubmit, useNavigation, useLoaderData, useNavigate } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { createSale, applySale } from "../models/sale.server"; 
 import { getTimers } from "../models/timer.server";
@@ -220,6 +220,7 @@ export async function action({ request }) {
 
 export default function NewSale() {
   const shopify = useAppBridge();
+  const navigate = useNavigate();
   const [selectedItems, setSelectedItems] = useState([]);
   const [title, setTitle] = useState("");
   const [discountType, setDiscountType] = useState("PERCENTAGE");
@@ -256,11 +257,82 @@ export default function NewSale() {
   const navigation = useNavigation();
   const isLoading = navigation.state === "submitting";
 
+  // --- Unsaved changes guard ---
+  const [isDirty, setIsDirty] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  // Wrap setters to mark dirty
+  const dirty = (setter) => (val) => { setIsDirty(true); setter(val); };
+
   const [selectedCollections, setSelectedCollections] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
   const [selectedVendors, setSelectedVendors] = useState([]);
   const [tagInput, setTagInput] = useState("");
   const [vendorInput, setVendorInput] = useState("");
+
+  // Validation State
+  const [touched, setTouched] = useState({});
+  const [clientErrors, setClientErrors] = useState({});
+
+  const validateField = useCallback((field, val) => {
+    let error = null;
+    if (field === "title" && !val) error = "Title is required";
+    if (field === "value") {
+      if (!val) error = "Value is required";
+      else if (parseFloat(val) < 0) error = "Value cannot be negative";
+    }
+    if (field === "items" && val.length === 0) error = "Select at least one product";
+    
+    setClientErrors(prev => ({ ...prev, [field]: error }));
+    return error;
+  }, []);
+
+  const handleBlur = (field) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    // Validate current value
+    if (field === "title") validateField("title", title);
+    if (field === "value") validateField("value", value);
+  };
+
+  // Live Preview Helper
+  const getPreviewData = () => {
+    if (selectedItems.length === 0) return null;
+    const item = selectedItems[0];
+    const price = item.price || item.variants?.[0]?.price || "0";
+    const originalPrice = parseFloat(price);
+    
+    let discountedPrice = originalPrice;
+    const discountVal = parseFloat(value) || 0;
+
+    if (discountType === "PERCENTAGE") {
+      discountedPrice = originalPrice - (originalPrice * (discountVal / 100));
+    } else {
+      discountedPrice = originalPrice - discountVal;
+    }
+    
+    if (overrideCents) {
+       discountedPrice = Math.floor(discountedPrice) + 0.99;
+    }
+
+    return {
+      title: item.title,
+      original: originalPrice.toFixed(2),
+      discounted: Math.max(0, discountedPrice).toFixed(2),
+      image: item.images?.[0]?.originalSrc || item.image?.originalSrc || ""
+    };
+  };
+
+  const preview = getPreviewData();
 
   const selectProducts = async () => {
     const response = await shopify.resourcePicker({
@@ -306,6 +378,12 @@ export default function NewSale() {
   };
 
   const handleSubmit = () => {
+    // Validation: timer is required
+    if (!timerId) {
+      shopify.toast.show("A timer is required. Please select or create a timer.", { isError: true });
+      return;
+    }
+
     const startDateTime = `${startDate}T${startTime}:00`;
     const endDateTime = setEndTimer ? `${endDate}T${endTime}:00` : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -361,12 +439,13 @@ export default function NewSale() {
                   label="Title"
                   labelHidden
                   value={title}
-                  onChange={setTitle}
+                  onChange={(val) => { dirty(setTitle)(val); validateField("title", val); }}
+                  onBlur={() => handleBlur("title")}
                   autoComplete="off"
-                  maxLength={255}
+                  maxLength={50}
                   showCharacterCount
-                  helpText="This title is not visible to the clients."
-                  error={actionData?.errors?.title}
+                  helpText="Internal name for this sale."
+                  error={(touched.title && clientErrors.title) || actionData?.errors?.title}
                 />
               </BlockStack>
             </Card>
@@ -384,7 +463,7 @@ export default function NewSale() {
                               { label: "Fixed Amount", value: "FIXED_AMOUNT" },
                             ]}
                             value={discountType}
-                            onChange={setDiscountType}
+                            onChange={dirty(setDiscountType)}
                         />
                     </div>
                     <div style={{ flex: 1 }}>
@@ -393,10 +472,11 @@ export default function NewSale() {
                             labelHidden
                             type="number"
                             value={value}
-                            onChange={setValue}
+                            onChange={(val) => { dirty(setValue)(val); validateField("value", val); }}
+                            onBlur={() => handleBlur("value")}
                             suffix={discountType === "PERCENTAGE" ? "%" : ""}
                             autoComplete="off"
-                            error={actionData?.errors?.value}
+                            error={(touched.value && clientErrors.value) || actionData?.errors?.value}
                         />
                     </div>
                  </InlineStack>
@@ -728,15 +808,27 @@ export default function NewSale() {
                 <BlockStack gap="400">
                     <Text as="h2" variant="headingSm">Product page timer</Text>
                     <Text as="p" tone="subdued">The timer will be automatically configured with the sale's end date upon activation.</Text>
+                    {!timerId && (
+                      <Banner tone="warning">
+                        <p>A timer is required to create a sale. Please select an existing timer or create a new one.</p>
+                      </Banner>
+                    )}
                     <Select
                         label="Timer display"
                         labelHidden
                         options={[
-                          { label: "Display no timer", value: "" },
+                          { label: "＋ Create new timer", value: "__create_new__" },
                           ...((useLoaderData()?.timers || []).map(t => ({ label: t.name, value: t.id })))
                         ]}
                         value={timerId}
-                        onChange={setTimerId}
+                        onChange={(val) => {
+                          if (val === "__create_new__") {
+                            navigate("/app/timers/new");
+                          } else {
+                            setTimerId(val);
+                          }
+                        }}
+                        error={!timerId ? "A timer is required" : undefined}
                     />
                 </BlockStack>
             </Card>
@@ -797,24 +889,46 @@ export default function NewSale() {
         </Layout.Section>
         
         <Layout.Section variant="oneThird">
-             <Card>
-                <BlockStack gap="200">
-                    <Text as="h2" variant="headingSm">Summary</Text>
-                    <Text as="p" fontWeight="bold">{title || "No title yet"}</Text>
-                    <Text as="p" fontWeight="semibold">Details</Text>
-                    <List type="bullet">
-                        <List.Item>{value}% off {selectedItems.length} products</List.Item>
-                         <List.Item>Active from {new Date(`${startDate}T${startTime}`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</List.Item>
-                    </List>
-                </BlockStack>
-             </Card>
+             {preview && (
+                 <Card>
+                    <BlockStack gap="200">
+                        <Text as="h2" variant="headingSm">Live Preview</Text>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            {preview.image && (
+                                <img src={preview.image} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 4 }} />
+                            )}
+                            <div>
+                                <Text as="p" variant="bodySm" tone="subdued">{preview.title}</Text>
+                                <div style={{ display: "flex", gap: "6px", alignItems: "baseline" }}>
+                                    <Text as="span" textDecoration="line-through" tone="subdued">${preview.original}</Text>
+                                    <Text as="span" fontWeight="bold" tone="success">${preview.discounted}</Text>
+                                </div>
+                            </div>
+                        </div>
+                         {overrideCents && <Text as="p" variant="bodyXs" tone="subdued">Ending in .99</Text>}
+                    </BlockStack>
+                 </Card>
+             )}
              <div style={{ marginTop: "1rem" }}>
                  <Card>
                     <BlockStack gap="200">
-                        <Text as="p">Have an idea for a missing feature? We'd love to hear it!</Text>
-                        <Button variant="plain" external>Request a feature</Button>
+                        <Text as="h2" variant="headingSm">Summary</Text>
+                        <Text as="p" fontWeight="bold">{title || "No title yet"}</Text>
+                        <Text as="p" fontWeight="semibold">Details</Text>
+                        <List type="bullet">
+                            <List.Item>{value}% off {selectedItems.length} products</List.Item>
+                             <List.Item>Active from {new Date(`${startDate}T${startTime}`).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</List.Item>
+                        </List>
                     </BlockStack>
                  </Card>
+             </div>
+             <div style={{ marginTop: "1rem" }}>
+                  <Card>
+                     <BlockStack gap="200">
+                         <Text as="p">Have an idea for a missing feature? We'd love to hear it!</Text>
+                         <Button variant="plain" external>Request a feature</Button>
+                     </BlockStack>
+                  </Card>
              </div>
         </Layout.Section>
       </Layout>

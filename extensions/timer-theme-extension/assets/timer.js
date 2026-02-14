@@ -1,82 +1,170 @@
+
 document.addEventListener("DOMContentLoaded", async () => {
-  const container = document.querySelector(".rockit-timer-wrapper");
-  if (!container) return;
+  // Use a unique class or attribute to find the container
+  // We might have multiple containers if there are multiple product blocks.
+  const containers = document.querySelectorAll(".rockit-timer-wrapper");
+  if (containers.length === 0) return;
 
-  const productId = container.dataset.productId;
-  if (!productId) return;
+  // Process each container independently
+  containers.forEach(async (container) => {
+      const productId = container.dataset.productId;
+      if (!productId) return;
 
-  try {
-    const res = await fetch(`/apps/timer?productId=${productId}`);
-    if (!res.ok) return;
-    
-    const data = await res.json();
-    if (!data.timer) return; // No active timer for this product
-
-    const { timer, endTime } = data;
-    const style = JSON.parse(timer.style || "{}");
-    const labels = style.labels || { days: "Days", hours: "Hours", minutes: "Minutes", seconds: "Seconds" };
-
-    // Apply container styles
-    const content = container.querySelector(".rockit-timer-content");
-    content.style.backgroundColor = style.backgroundColor || "#ffffff";
-    content.style.border = `${style.borderSize || 0}px solid ${style.borderColor || "#000000"}`;
-    content.style.borderRadius = `${style.borderRadius || 8}px`;
-    content.style.padding = `${style.padding || 20}px`;
-    content.style.textAlign = "center";
-    content.style.fontFamily = "inherit"; // Use theme font
-    
-    // Build HTML
-    let html = "";
-    if (style.title) {
-        html += `<div style="font-size: 18px; font-weight: bold; margin-bottom: 4px; color: ${style.titleColor || "#000000"}">${style.title}</div>`;
-    }
-    if (style.subtitle) {
-        html += `<div style="font-size: 14px; margin-bottom: 12px; color: ${style.subtitleColor || "#000000"}">${style.subtitle}</div>`;
-    }
-    
-    html += `<div class="rockit-timer-digits" style="display: flex; justify-content: center; gap: 16px; color: ${style.timerColor || "#000000"}"></div>`;
-    
-    content.innerHTML = html;
-    container.style.display = "block";
-
-    const digitsContainer = content.querySelector(".rockit-timer-digits");
-    
-    // Countdown Logic
-    const end = new Date(endTime).getTime();
-    
-    function update() {
-        const now = new Date().getTime();
-        const distance = end - now;
+      try {
+        // Cache busting to prevent stale data
+        const res = await fetch(`/apps/timer?productId=${productId}&t=${Date.now()}`);
+        if (!res.ok) return;
         
-        if (distance < 0) {
-            container.style.display = "none";
+        const data = await res.json();
+        
+        // Fix: App proxy returns { timer: { ... } }, effectively wrapping it doubly or singly dependant on proxy
+        // Robust check for nested timer object
+        const timerData = data.timer?.timer || data.timer;
+
+        if (!timerData) {
+          container.style.display = "none";
+          return;
+        }
+
+        const { endTime, style } = timerData;
+        
+        // Date parsing safety
+        if (!endTime) return;
+        const end = new Date(endTime).getTime();
+        // Guard invalid date
+        if (isNaN(end)) {
+            console.error("Rockit Timer: Invalid end time provided for product " + productId);
             return;
         }
 
-        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        const config = JSON.parse(style || "{}");
 
-        const pad = (n) => n < 10 ? `0${n}` : n;
+        // --- Apply Content ---
+        // Handle gradients vs solid colors vs helper classes
+        const bgStyle = (config.backgroundColor && config.backgroundColor.includes('gradient')) 
+          ? `background: ${config.backgroundColor};` 
+          : `background-color: ${config.backgroundColor || '#fff'};`;
 
-        digitsContainer.innerHTML = [
-            { val: pad(days), label: labels.days },
-            { val: pad(hours), label: labels.hours },
-            { val: pad(minutes), label: labels.minutes },
-            { val: pad(seconds), label: labels.seconds }
-        ].map(item => `
-            <div style="text-align: center;">
-                <div style="font-size: 32px; font-weight: bold; line-height: 1;">${item.val}</div>
-                <div style="font-size: 11px; text-transform: uppercase; margin-top: 4px; opacity: 0.8;">${item.label}</div>
+        const className = config.className || '';
+
+        let html = `
+          <div class="rockit-timer-box ${className}" style="
+            ${bgStyle}
+            border: ${config.borderSize || 0}px solid ${config.borderColor || 'transparent'};
+            border-radius: ${config.borderRadius || 0}px;
+            padding: ${config.padding || 12}px;
+            color: ${config.titleColor || '#000'};
+            font-size: ${config.fontSize || 16}px;
+          ">
+        `;
+
+        // Banner Layout: Title Loop Left, Timer Right
+        html += `<div class="rockit-timer-text-group">`;
+        if (config.title) {
+          html += `<div class="rockit-timer-title" style="color: ${config.titleColor}">${config.title}</div>`;
+        }
+        if (config.subtitle) {
+          html += `<div class="rockit-timer-subtitle" style="color: ${config.subtitleColor || '#666'}">${config.subtitle}</div>`;
+        }
+        html += `</div>`;
+
+        html += `<div class="rockit-timer-digits" style="color: ${config.timerColor || '#000'}">`;
+        
+        const labels = config.labels || { days: "D", hours: "H", minutes: "M", seconds: "S" };
+        ["days", "hours", "minutes", "seconds"].forEach(unit => {
+          // Use classes instead of IDs to avoid collisions
+          html += `
+            <div class="rockit-timer-unit">
+              <div class="rockit-timer-val rockit-${unit}">00</div>
+              <div class="rockit-timer-label">${labels[unit]}</div>
             </div>
-        `).join("");
-    }
-    
-    update();
-    setInterval(update, 1000);
+          `;
+        });
 
-  } catch (e) {
-    console.error("Rockit Timer Error:", e);
-  }
+        html += `</div></div>`;
+        
+        container.innerHTML = html;
+        container.style.display = "block";
+
+        // --- Placement Logic ---
+        let injected = false;
+        const { cssSelector, embedPosition } = config;
+
+        // 1. Explicit Selector (High Priority)
+        if (cssSelector && cssSelector.trim() !== "") {
+            const target = document.querySelector(cssSelector);
+            if (target) {
+                const pos = embedPosition || 'last_child';
+                // Move the container
+                if (pos === 'before') target.parentNode.insertBefore(container, target);
+                else if (pos === 'after') target.parentNode.insertBefore(container, target.nextSibling);
+                else if (pos === 'first_child') target.prepend(container);
+                else if (pos === 'last_child') target.append(container);
+                injected = true;
+            }
+        }
+
+        // 2. Auto-Inject (Fallback) - Below Header
+        if (!injected) {
+            const headerSelectors = [
+                "#shopify-section-header", 
+                "sticky-header",
+                ".sticky-header", // Added class selector
+                "header.site-header",
+                ".header-wrapper",
+                "header[role='banner']"
+            ];
+
+            for (const sel of headerSelectors) {
+                const header = document.querySelector(sel);
+                if (header) {
+                    header.parentNode.insertBefore(container, header.nextSibling);
+                    injected = true;
+                    break;
+                }
+            }
+        }
+
+        // 3. Last Resort: Prepend to Body (Top of page) if header not found
+        // Only do this if we haven't already placed it (it might already be in a valid spot from liquid)
+        if (!injected) {
+            document.body.prepend(container);
+        }
+        
+        // Cache elements for updates - Scoped to this container
+        const daysEl = container.querySelector(".rockit-days");
+        const hoursEl = container.querySelector(".rockit-hours");
+        const minutesEl = container.querySelector(".rockit-minutes");
+        const secondsEl = container.querySelector(".rockit-seconds");
+
+        // --- Countdown Logic ---
+        const updateTimer = () => {
+          const now = new Date().getTime();
+          const distance = end - now;
+
+          if (distance < 0) {
+            container.style.display = "none";
+            clearInterval(interval);
+            return;
+          }
+
+          const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+          // Null safety updates
+          if (daysEl) daysEl.innerText = days < 10 ? `0${days}` : days;
+          if (hoursEl) hoursEl.innerText = hours < 10 ? `0${hours}` : hours;
+          if (minutesEl) minutesEl.innerText = minutes < 10 ? `0${minutes}` : minutes;
+          if (secondsEl) secondsEl.innerText = seconds < 10 ? `0${seconds}` : seconds;
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+
+      } catch (e) {
+        console.error("Rockit Timer Error:", e);
+      }
+  }); // end forEach
 });

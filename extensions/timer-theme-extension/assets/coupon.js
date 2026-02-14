@@ -55,8 +55,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function renderCouponCard(coupon, index) {
   const desc = coupon.description ? `<div class="rockit-coupon-desc">${escapeHtml(coupon.description)}</div>` : "";
+  const styleClass = coupon.style ? `rockit-coupon-${coupon.style}` : "rockit-coupon-standard";
+  
   return `
-    <div class="rockit-coupon-card" data-index="${index}">
+    <div class="rockit-coupon-card ${styleClass}" data-index="${index}">
       <div class="rockit-coupon-info">
         <div class="rockit-coupon-offer">🎁 ${escapeHtml(coupon.offerTitle)}</div>
         ${desc}

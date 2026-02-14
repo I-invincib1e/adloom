@@ -51,7 +51,7 @@ export async function createSale({
       excludeOnSale: excludeOnSale === true,
       allowOverride: allowOverride === true,
       deactivationStrategy,
-      timerId,
+      timerId: timerId || null,
       tagsToAdd,
       tagsToRemove,
       items: {
@@ -99,7 +99,7 @@ export async function updateSale(id, {
       excludeOnSale: excludeOnSale === true,
       allowOverride: allowOverride === true,
       deactivationStrategy,
-      timerId,
+      timerId: timerId || null,
       tagsToAdd,
       tagsToRemove,
       items: {

@@ -66,6 +66,7 @@ export async function action({ request, params }) {
   const description = formData.get("description");
   const startTime = formData.get("startTime");
   const endTime = formData.get("endTime");
+  const style = formData.get("style");
   const productsStr = formData.get("products");
 
   const errors = {};
@@ -86,6 +87,7 @@ export async function action({ request, params }) {
     description,
     startTime,
     endTime,
+    style,
     products,
   });
 
@@ -114,6 +116,7 @@ export default function EditCouponPage() {
   );
   const [endDate, setEndDate] = useState(endDT.toISOString().split("T")[0]);
   const [endTime, setEndTime] = useState(endDT.toTimeString().slice(0, 5));
+  const [style, setStyle] = useState(coupon.style || "standard");
 
   const [selectedProducts, setSelectedProducts] = useState(
     coupon.enrichedProducts || []
@@ -145,6 +148,7 @@ export default function EditCouponPage() {
     formData.append("description", description);
     formData.append("startTime", startDateTime);
     formData.append("endTime", endDateTime);
+    formData.append("style", style);
     formData.append("products", JSON.stringify(selectedProducts));
 
     submit(formData, { method: "post" });
@@ -251,6 +255,25 @@ export default function EditCouponPage() {
                     />
                   </div>
                 </InlineStack>
+              </BlockStack>
+            </Card>
+
+            <Card>
+              <BlockStack gap="400">
+                <Text as="h2" variant="headingSm">
+                  Appearance
+                </Text>
+                <Select
+                  label="Coupon Style"
+                  options={[
+                    { label: "Standard (Solid)", value: "standard" },
+                    { label: "Dotted Border", value: "dotted" },
+                    { label: "Ticket Stub", value: "ticket" },
+                    { label: "Minimal (Text only)", value: "minimal" },
+                  ]}
+                  value={style}
+                  onChange={setStyle}
+                />
               </BlockStack>
             </Card>
 
