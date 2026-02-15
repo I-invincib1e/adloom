@@ -1,0 +1,19 @@
+<div class="rockit-global-embed" style="display: none;">
+  <!-- Shared containers for automatic injection -->
+  <div class="rockit-timer-wrapper" style="display: none;" data-product-id="{{ product.id }}"></div>
+  <div class="rockit-coupons-wrapper" style="display: none;" data-product-id="{{ product.id }}"></div>
+</div>
+
+<script src="{{ 'timer.js' | asset_url }}" defer="defer"></script>
+<script src="{{ 'coupon.js' | asset_url }}" defer="defer"></script>
+
+{{ 'timer.css' | asset_url | stylesheet_tag }}
+{{ 'coupon.css' | asset_url | stylesheet_tag }}
+
+{% schema %}
+{
+  "name": "Rockit Sales Manager",
+  "target": "body",
+  "settings": []
+}
+{% endschema %}

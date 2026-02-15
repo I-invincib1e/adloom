@@ -99,21 +99,51 @@ export default function Index() {
   const [selectedTab, setSelectedTab] = useState(0);
   const shopify = useAppBridge();
 
-  // Confirmation modal state
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null); // { type, ids, label }
-
-  // App embed prompt — shown once until dismissed
-  const [showEmbedBanner, setShowEmbedBanner] = useState(false);
+  // Launch Track logic
+  const [trackDismissed, setTrackDismissed] = useState(false);
   useEffect(() => {
-    const dismissed = localStorage.getItem("rockit_embed_dismissed");
-    if (!dismissed) setShowEmbedBanner(true);
+    const dismissed = localStorage.getItem("rockit_track_dismissed");
+    if (dismissed) setTrackDismissed(true);
   }, []);
 
-  const dismissEmbed = useCallback(() => {
-    localStorage.setItem("rockit_embed_dismissed", "true");
-    setShowEmbedBanner(false);
-  }, []);
+  const milestones = useMemo(() => {
+    const hasSales = sales.length > 0;
+    // We'd ideally check for timers/coupons too, but for simplicity:
+    return [
+      {
+        id: "embed",
+        label: "Activate Storefront Embed",
+        done: false, // In a real app, we'd check shop settings via API
+        actionLabel: "Activate Now",
+        url: "https://admin.shopify.com/themes/current/editor?context=apps",
+        external: true,
+        target: "_top"
+      },
+      {
+        id: "sale",
+        label: "Create Your First Sale",
+        done: hasSales,
+        actionLabel: "Create Sale",
+        onAction: () => navigate("/app/sales/new")
+      },
+      {
+        id: "timer",
+        label: "Add a Countdown Timer",
+        done: false,
+        actionLabel: "Setup Timer",
+        onAction: () => navigate("/app/timers/new")
+      },
+      {
+        id: "pricing",
+        label: "Choose a Growth Plan",
+        done: false,
+        actionLabel: "View Plans",
+        onAction: () => navigate("/app/pricing")
+      }
+    ];
+  }, [sales, navigate]);
+
+  const progress = Math.round((milestones.filter(m => m.done).length / milestones.length) * 100);
 
   const showSuccessBanner = searchParams.get("success") === "true";
   const updatedCount = searchParams.get("count");
@@ -122,13 +152,13 @@ export default function Index() {
     if (showSuccessBanner) {
       shopify.toast.show(`Sale activated — ${updatedCount} prices updated`);
     }
-  }, [showSuccessBanner]);
+  }, [showSuccessBanner, updatedCount, shopify]);
 
   useEffect(() => {
     if (actionData?.error) {
       shopify.toast.show(actionData.error, { isError: true });
     }
-  }, [actionData]);
+  }, [actionData, shopify]);
 
   const dismissBanner = useCallback(() => {
     setSearchParams((prev) => {
@@ -138,6 +168,84 @@ export default function Index() {
         return newParams;
     });
   }, [setSearchParams]);
+
+  const LaunchTrack = () => (
+    <Card padding="500">
+      <BlockStack gap="500">
+        <InlineStack align="space-between" verticalAlign="center">
+          <BlockStack gap="100">
+            <Text as="h2" variant="headingLg" fontWeight="bold">Launch Track</Text>
+            <Text as="p" variant="bodyMd" tone="subdued">Complete these steps to start boosting your conversions.</Text>
+          </BlockStack>
+          <div style={{ textAlign: "right" }}>
+            <Text as="p" variant="heading2xl" fontWeight="bold" tone="highlight">{progress}%</Text>
+            <Text as="p" variant="bodyxs" tone="subdued" fontWeight="medium">COMPLETED</Text>
+          </div>
+        </InlineStack>
+
+        <div style={{ height: "8px", background: "#f3f4f6", borderRadius: "9999px", overflow: "hidden" }}>
+          <div style={{ 
+            width: `${progress}%`, 
+            height: "100%", 
+            background: "linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)",
+            borderRadius: "9999px",
+            transition: "width 0.8s ease-out"
+          }} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "16px" }}>
+          {milestones.map((m) => (
+            <div key={m.id} style={{ 
+              padding: "16px", 
+              borderRadius: "12px", 
+              background: m.done ? "#f0fdf4" : "#ffffff",
+              border: `1px solid ${m.done ? "#bbf7d0" : "#f3f4f6"}`,
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
+              justifyContent: "space-between",
+              transition: "all 0.2s ease"
+            }}>
+              <BlockStack gap="100">
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                   <div style={{ 
+                      width: "18px", 
+                      height: "18px", 
+                      borderRadius: "50%", 
+                      background: m.done ? "#22c55e" : "#e5e7eb",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "white",
+                      fontSize: "10px"
+                   }}>
+                     {m.done ? "✓" : ""}
+                   </div>
+                   <Text as="span" variant="bodySm" fontWeight={m.done ? "bold" : "medium"}>{m.label}</Text>
+                </div>
+              </BlockStack>
+              {!m.done && (
+                 <Button 
+                   size="slim" 
+                   url={m.url} 
+                   external={m.external} 
+                   target={m.target} 
+                   onClick={m.onAction}
+                   variant="primary"
+                 >
+                   {m.actionLabel}
+                 </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      </BlockStack>
+    </Card>
+  );
+
+  // Confirmation modal state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); 
 
   // Tab counts
   const counts = useMemo(() => ({
@@ -323,7 +431,7 @@ export default function Index() {
 
   return (
     <Page
-      title="Sales"
+      title="Dashboard"
       primaryAction={sales.length > 0 ? {
         content: "Create sale",
         onAction: () => navigate("/app/sales/new"),
@@ -331,76 +439,58 @@ export default function Index() {
     >
       <Layout>
         <Layout.Section>
-          {showEmbedBanner && (
-            <div style={{ marginBottom: "1rem" }}>
-              <Banner
-                tone="info"
-                onDismiss={dismissEmbed}
-                title="Embed app on your storefront"
-              >
-                <p>To display timers and sale features on your store, the app needs to be embedded in your theme.</p>
-                <div style={{ marginTop: "0.5rem" }}>
-                  <InlineStack gap="200">
-                    <Button
-                      url="https://admin.shopify.com/themes/current/editor?context=apps"
-                      external
-                      target="_top"
-                    >
-                      Embed app
-                    </Button>
-                    <Button onClick={dismissEmbed} variant="plain">Skip for now</Button>
-                  </InlineStack>
-                </div>
-              </Banner>
-            </div>
-          )}
           {showSuccessBanner && (
-             <div style={{ marginBottom: "1rem" }}>
+             <div style={{ marginBottom: "2rem" }}>
                 <Banner
                     tone="success"
                     onDismiss={dismissBanner}
-                    title={`Sale has been activated, and ${updatedCount} prices have been updated.`}
+                    title={`Sale activated: ${updatedCount} prices updated.`}
                 >
-                    <p>Have the prices been updated correctly for the selected products?</p>
-                    <div style={{ marginTop: "0.5rem" }}>
-                         <InlineStack gap="200">
-                            <Button onClick={dismissBanner}>Everything is great</Button>
-                            <Button onClick={dismissBanner}>There is a problem</Button>
-                         </InlineStack>
-                    </div>
+                    <p>Prices have been successfully synced to your storefront.</p>
                 </Banner>
              </div>
           )}
-          <SetupGuide salesCount={sales.length} />
-          <Card padding="0">
-            {sales.length === 0 ? (
-                emptyStateMarkup
-            ) : (
-                <>
-                  <Tabs tabs={tabs} selected={selectedTab} onSelect={handleTabChange}>
-                  </Tabs>
-                  <IndexTable
-                    resourceName={resourceName}
-                    itemCount={filteredSales.length}
-                    selectedItemsCount={
-                      allResourcesSelected ? "All" : selectedResources.length
-                    }
-                    onSelectionChange={handleSelectionChange}
-                    promotedBulkActions={promotedBulkActions}
-                    headings={[
-                      { title: "Title" },
-                      { title: "Status" },
-                      { title: "Start time (EST)" },
-                      { title: "End time (EST)" },
-                      { title: "Variants on sale", alignment: "end" },
-                      { title: "Actions" },
-                    ]}
-                  >
-                    {rowMarkup}
-                  </IndexTable>
-                </>
-            )}
-          </Card>
+          
+          {!trackDismissed && (
+            <div style={{ marginBottom: "2rem" }}>
+              <LaunchTrack />
+            </div>
+          )}
+
+          <BlockStack gap="400">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Text as="h2" variant="headingMd">Active Campaigns</Text>
+              {sales.length > 0 && (
+                <Tabs tabs={tabs} selected={selectedTab} onSelect={handleTabChange} />
+              )}
+            </div>
+            
+            <Card padding="0">
+              {sales.length === 0 ? (
+                  emptyStateMarkup
+              ) : (
+                <IndexTable
+                  resourceName={resourceName}
+                  itemCount={filteredSales.length}
+                  selectedItemsCount={
+                    allResourcesSelected ? "All" : selectedResources.length
+                  }
+                  onSelectionChange={handleSelectionChange}
+                  promotedBulkActions={promotedBulkActions}
+                  headings={[
+                    { title: "Title" },
+                    { title: "Status" },
+                    { title: "Start" },
+                    { title: "End" },
+                    { title: "Variants", alignment: "end" },
+                    { title: "Actions" },
+                  ]}
+                >
+                  {rowMarkup}
+                </IndexTable>
+              )}
+            </Card>
+          </BlockStack>
         </Layout.Section>
       </Layout>
 

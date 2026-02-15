@@ -104,20 +104,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
 
-        // 2. Auto-Inject (Fallback) - Below Header
+        // 2. Auto-Inject (Fallback) - Below Header or Announcement Bar
         if (!injected) {
             const headerSelectors = [
+                ".announcement-bar",
+                "#shopify-section-announcement-bar",
                 "#shopify-section-header", 
                 "sticky-header",
-                ".sticky-header", // Added class selector
+                ".sticky-header",
                 "header.site-header",
                 ".header-wrapper",
-                "header[role='banner']"
+                "header[role='banner']",
+                ".section-header"
             ];
 
             for (const sel of headerSelectors) {
                 const header = document.querySelector(sel);
-                if (header) {
+                if (header && header.offsetParent !== null) { // Ensure it's visible
                     header.parentNode.insertBefore(container, header.nextSibling);
                     injected = true;
                     break;
@@ -125,9 +128,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
         }
 
-        // 3. Last Resort: Prepend to Body (Top of page) if header not found
-        // Only do this if we haven't already placed it (it might already be in a valid spot from liquid)
-        if (!injected) {
+        // 3. Page specific injection (Product Page)
+        if (!injected && window.location.pathname.includes('/products/')) {
+            const productForm = document.querySelector('form[action*="/cart/add"]');
+            if (productForm) {
+                productForm.parentNode.insertBefore(container, productForm);
+                injected = true;
+            }
+        }
+
+        // 4. Last Resort: Prepend to Body (Top of page)
+        if (!injected && container.parentNode !== document.body) {
             document.body.prepend(container);
         }
         

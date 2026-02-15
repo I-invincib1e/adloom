@@ -27,6 +27,7 @@ import {
 } from "@shopify/polaris";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { SearchIcon } from "@shopify/polaris-icons";
+import { StrategyExample } from "../components/StrategyExample";
 
 export async function loader({ request }) {
   await authenticate.admin(request);
@@ -276,6 +277,7 @@ export default function NewSale() {
   const [tagsToAdd, setTagsToAdd] = useState("");
   const [tagsToRemove, setTagsToRemove] = useState("");
   const [combinationsOpen, setCombinationsOpen] = useState(false);
+  const [showExample, setShowExample] = useState(false);
 
   const submit = useSubmit();
   const navigation = useNavigation();
@@ -531,8 +533,23 @@ export default function NewSale() {
               <BlockStack gap="400">
                  <InlineStack align="space-between">
                     <Text as="h2" variant="headingSm">Discount strategy</Text>
-                     <Button variant="plain">Show example</Button>
+                     <Button 
+                       variant="plain" 
+                       onClick={() => setShowExample(!showExample)}
+                     >
+                       {showExample ? "Hide example" : "Show example"}
+                     </Button>
                  </InlineStack>
+
+                  <Collapsible open={showExample} id="strategy-example">
+                    <Box paddingBlockEnd="400">
+                      <StrategyExample 
+                        strategy={discountStrategy} 
+                        discountType={discountType} 
+                        value={value} 
+                      />
+                    </Box>
+                  </Collapsible>
                  
                  <BlockStack gap="200">
                     <RadioButton

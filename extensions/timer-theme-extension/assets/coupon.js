@@ -38,9 +38,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     container.innerHTML = html;
     container.style.display = "block";
 
+    // --- Placement Logic ---
+    let injected = false;
+    // Auto-Inject - Above Product Form on Product Pages
+    if (window.location.pathname.includes('/products/')) {
+        const productForm = document.querySelector('form[action*="/cart/add"]');
+        if (productForm) {
+            productForm.parentNode.insertBefore(container, productForm);
+            injected = true;
+        }
+    }
+
     // Attach events to visible cards
     attachCardEvents(container);
-
+    
     // Build sidebar if there are hidden coupons
     if (hiddenCoupons.length > 0) {
       buildSidebar(coupons);

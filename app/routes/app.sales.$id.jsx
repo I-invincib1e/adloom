@@ -28,6 +28,7 @@ import {
 } from "@shopify/polaris";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { SearchIcon } from "@shopify/polaris-icons";
+import { StrategyExample } from "../components/StrategyExample";
 
 export async function loader({ request, params }) {
   console.log("Loading Sale:", params.id); // Debug Log
@@ -239,6 +240,7 @@ export default function EditSale() {
   const [tagsToAdd, setTagsToAdd] = useState(sale.tagsToAdd || "");
   const [tagsToRemove, setTagsToRemove] = useState(sale.tagsToRemove || "");
   const [combinationsOpen, setCombinationsOpen] = useState(false);
+  const [showExample, setShowExample] = useState(false);
 
   const submit = useSubmit();
   const actionData = useActionData();
@@ -470,8 +472,24 @@ export default function EditSale() {
               <BlockStack gap="400">
                  <InlineStack align="space-between">
                     <Text as="h2" variant="headingSm">Discount strategy</Text>
-                     <Button variant="plain">Show example</Button>
+                     <Button 
+                       variant="plain" 
+                       onClick={() => setShowExample(!showExample)}
+                     >
+                       {showExample ? "Hide example" : "Show example"}
+                     </Button>
                  </InlineStack>
+
+                 <Collapsible open={showExample} id="strategy-example">
+                    <Box paddingBlockEnd="400">
+                      <StrategyExample 
+                        strategy={discountStrategy} 
+                        discountType={discountType} 
+                        value={value} 
+                      />
+                    </Box>
+                 </Collapsible>
+                 
                  <BlockStack gap="200">
                     <RadioButton
                         label="Calculate discount based on compare-at price"
