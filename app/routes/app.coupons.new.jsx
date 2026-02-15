@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { json, redirect } from "@remix-run/node";
-import { useActionData, useNavigation, useSubmit } from "@remix-run/react";
+import { useActionData, useNavigation, useSubmit, useLoaderData } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { createCoupon } from "../models/coupon.server";
 import { useAppBridge } from "@shopify/app-bridge-react";
+import { checkLimit } from "../models/billing.server";
 import {
   Page,
   Layout,
@@ -21,11 +22,16 @@ import {
 
 export async function loader({ request }) {
   await authenticate.admin(request);
-  return null;
+  const allowed = await checkLimit(request, "coupons");
+  return json({ allowed });
 }
 
 export async function action({ request }) {
   await authenticate.admin(request);
+  const allowed = await checkLimit(request, "coupons");
+  if (!allowed) {
+      return json({ errors: { base: "Limit reached" } }, { status: 403 });
+  }
   const formData = await request.formData();
 
   const offerTitle = formData.get("offerTitle");
@@ -65,6 +71,7 @@ export default function NewCouponPage() {
   const submit = useSubmit();
   const actionData = useActionData();
   const navigation = useNavigation();
+  const { allowed } = useLoaderData();
   const isLoading = navigation.state === "submitting";
 
   const [offerTitle, setOfferTitle] = useState("");
@@ -111,6 +118,15 @@ export default function NewCouponPage() {
 
   return (
     <Page title="Create Coupon" backAction={{ url: "/app/coupons" }}>
+      {!allowed && (
+        <Layout>
+            <Layout.Section>
+                <Banner tone="warning" title="Limit Reached">
+                   <p>You have reached the limit of active coupons for your current plan. <Button variant="plain" url="/app/pricing">Upgrade now</Button> to create more.</p>
+                </Banner>
+            </Layout.Section>
+        </Layout>
+      )}
       <Layout>
         <Layout.Section>
           <BlockStack gap="400">
@@ -342,6 +358,7 @@ export default function NewCouponPage() {
               onClick={handleSubmit}
               loading={isLoading}
               fullWidth
+              disabled={!allowed}
             >
               Create Coupon
             </Button>

@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { json, redirect } from "@remix-run/node";
-import { useActionData, useSubmit, useNavigation, useLoaderData, useNavigate } from "@remix-run/react";
+import { useActionData, useSubmit, useNavigation, useLoaderData, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { createSale, applySale } from "../models/sale.server"; 
 import { getTimers } from "../models/timer.server";
+import { checkLimit } from "../models/billing.server";
 import {
   Page,
   Layout,
@@ -29,12 +30,24 @@ import { SearchIcon } from "@shopify/polaris-icons";
 
 export async function loader({ request }) {
   await authenticate.admin(request);
-  const timers = await getTimers();
-  return json({ timers });
+  const allowed = await checkLimit(request, "sales");
+  try {
+    const timers = await getTimers();
+    return json({ timers, allowed });
+  } catch (error) {
+    console.error("Loader failed:", error);
+    throw new Response("Failed to load timers", { status: 500 });
+  }
 }
 
 export async function action({ request }) {
   const { admin } = await authenticate.admin(request);
+  const allowed = await checkLimit(request, "sales");
+  if (!allowed) {
+    return json({ errors: { base: "You have reached the limit for your current plan. Please upgrade to create more sales." } }, { status: 403 });
+  }
+
+  try {
   const formData = await request.formData();
 
   const title = formData.get("title");
@@ -216,12 +229,24 @@ export async function action({ request }) {
   }
 
   return redirect(`/app?success=true&count=${updatedCount || 0}`);
+  } catch (error) {
+    console.error("Action failed:", error);
+    return json({ errors: { base: "Failed to create sale. Please try again." } }, { status: 500 });
+  }
 }
 
 export default function NewSale() {
   const shopify = useAppBridge();
   const navigate = useNavigate();
+  const actionData = useActionData();
+  const { timers, allowed } = useLoaderData();
   const [selectedItems, setSelectedItems] = useState([]);
+
+  useEffect(() => {
+    if (actionData?.errors?.base) {
+      shopify.toast.show(actionData.errors.base, { isError: true });
+    }
+  }, [actionData]);
   const [title, setTitle] = useState("");
   const [discountType, setDiscountType] = useState("PERCENTAGE");
   const [value, setValue] = useState("0");
@@ -253,7 +278,6 @@ export default function NewSale() {
   const [combinationsOpen, setCombinationsOpen] = useState(false);
 
   const submit = useSubmit();
-  const actionData = useActionData();
   const navigation = useNavigation();
   const isLoading = navigation.state === "submitting";
 
@@ -417,7 +441,22 @@ export default function NewSale() {
     <Page
       title="Create price discount"
       backAction={{ url: "/app" }}
+      primaryAction={{
+        content: "Save",
+        onAction: submit,
+        loading: isLoading,
+        disabled: !allowed,
+      }}
     >
+      {!allowed && (
+        <Layout>
+          <Layout.Section>
+            <Banner tone="warning" title="Limit Reached">
+              <p>You have reached the limit of active sales for your current plan. <Button variant="plain" url="/app/pricing">Upgrade now</Button> to create more.</p>
+            </Banner>
+          </Layout.Section>
+        </Layout>
+      )}
       <Layout>
         <Layout.Section>
           <BlockStack gap="400">
@@ -930,6 +969,32 @@ export default function NewSale() {
                      </BlockStack>
                   </Card>
              </div>
+        </Layout.Section>
+      </Layout>
+    </Page>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const navigate = useNavigate();
+
+  return (
+    <Page title="Error">
+      <Layout>
+        <Layout.Section>
+          <Banner tone="critical" title="Something went wrong">
+            <p>
+              {isRouteErrorResponse(error)
+                ? `${error.status} ${error.statusText} - ${error.data}`
+                : error instanceof Error
+                ? error.message
+                : "Unknown error occurred"}
+            </p>
+            <div style={{ marginTop: "1rem" }}>
+              <Button onClick={() => window.location.reload()}>Reload Page</Button>
+            </div>
+          </Banner>
         </Layout.Section>
       </Layout>
     </Page>

@@ -2,6 +2,7 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useNavigation, useSubmit, useNavigate } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getTimer, updateTimer, deleteTimer, duplicateTimer } from "../models/timer.server";
+import { checkLimit } from "../models/billing.server";
 import { TimerForm } from "../components/TimerForm";
 import { Page, Modal, Text, BlockStack } from "@shopify/polaris";
 import { useState } from "react";
@@ -29,6 +30,10 @@ export async function action({ request, params }) {
   const actionType = formData.get("action");
 
   if (actionType === "duplicate") {
+    const allowed = await checkLimit(request, "timers");
+    if (!allowed) {
+        return json({ errors: { base: "Limit reached" } }, { status: 403 });
+    }
     const newTimer = await duplicateTimer(params.id);
     return redirect(`/app/timers/${newTimer.id}`);
   }

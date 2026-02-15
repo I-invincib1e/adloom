@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { useLoaderData, useNavigate, useSubmit, useSearchParams, useNavigation } from "@remix-run/react";
+import { useLoaderData, useNavigate, useSubmit, useSearchParams, useNavigation, useRouteError, isRouteErrorResponse, useActionData } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getSales, revertSale, deleteSale } from "../models/sale.server";
 import {
@@ -50,8 +50,13 @@ function timeAgo(dateString) {
 
 export async function loader({ request }) {
   await authenticate.admin(request);
-  const sales = await getSales();
-  return json({ sales });
+  try {
+    const sales = await getSales();
+    return json({ sales });
+  } catch (error) {
+    console.error("Loader failed:", error);
+    throw new Response("Failed to load sales", { status: 500 });
+  }
 }
 
 export async function action({ request }) {
@@ -60,27 +65,32 @@ export async function action({ request }) {
   const action = formData.get("action");
   const saleId = formData.get("saleId");
 
-  if (action === "revert" && saleId) {
-    await revertSale(saleId, admin);
-  } else if (action === "delete" && saleId) {
-    await deleteSale(saleId, admin);
-  } else if (action === "bulkDeactivate") {
-    const ids = formData.get("ids")?.split(",") || [];
-    for (const id of ids) {
-      await revertSale(id, admin);
+  try {
+    if (action === "revert" && saleId) {
+      await revertSale(saleId, admin);
+    } else if (action === "delete" && saleId) {
+      await deleteSale(saleId, admin);
+    } else if (action === "bulkDeactivate") {
+      const ids = formData.get("ids")?.split(",") || [];
+      for (const id of ids) {
+        await revertSale(id, admin);
+      }
+    } else if (action === "bulkDelete") {
+      const ids = formData.get("ids")?.split(",") || [];
+      for (const id of ids) {
+        await deleteSale(id, admin);
+      }
     }
-  } else if (action === "bulkDelete") {
-    const ids = formData.get("ids")?.split(",") || [];
-    for (const id of ids) {
-      await deleteSale(id, admin);
-    }
+    return json({ success: true });
+  } catch (error) {
+    console.error("Action failed:", error);
+    return json({ success: false, error: error.message || "An unexpected error occurred" }, { status: 500 });
   }
-
-  return json({ success: true });
 }
 
 export default function Index() {
   const { sales } = useLoaderData();
+  const actionData = useActionData();
   const navigate = useNavigate();
   const submit = useSubmit();
   const navigation = useNavigation();
@@ -113,6 +123,12 @@ export default function Index() {
       shopify.toast.show(`Sale activated — ${updatedCount} prices updated`);
     }
   }, [showSuccessBanner]);
+
+  useEffect(() => {
+    if (actionData?.error) {
+      shopify.toast.show(actionData.error, { isError: true });
+    }
+  }, [actionData]);
 
   const dismissBanner = useCallback(() => {
     setSearchParams((prev) => {
@@ -328,6 +344,7 @@ export default function Index() {
                     <Button
                       url="https://admin.shopify.com/themes/current/editor?context=apps"
                       external
+                      target="_top"
                     >
                       Embed app
                     </Button>
@@ -414,6 +431,32 @@ export default function Index() {
           </BlockStack>
         </Modal.Section>
       </Modal>
+    </Page>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const navigate = useNavigate();
+
+  return (
+    <Page title="Error">
+      <Layout>
+        <Layout.Section>
+          <Banner tone="critical" title="Something went wrong">
+            <p>
+              {isRouteErrorResponse(error)
+                ? `${error.status} ${error.statusText} - ${error.data}`
+                : error instanceof Error
+                ? error.message
+                : "Unknown error occurred"}
+            </p>
+            <div style={{ marginTop: "1rem" }}>
+              <Button onClick={() => window.location.reload()}>Reload Page</Button>
+            </div>
+          </Banner>
+        </Layout.Section>
+      </Layout>
     </Page>
   );
 }

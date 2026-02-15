@@ -15,7 +15,7 @@ import {
   Banner,
 } from "@shopify/polaris";
 
-export function TimerForm({ timer, onSave, isLoading }) {
+export function TimerForm({ timer, onSave, isLoading, disabled }) {
   // --- State ---
   const [name, setName] = useState(timer?.name || "");
   const [position, setPosition] = useState(timer?.position || "below_price");
@@ -362,7 +362,7 @@ export function TimerForm({ timer, onSave, isLoading }) {
             fullWidth
             url="https://admin.shopify.com/themes/current/editor?context=apps"
             external
-            target="_blank"
+            target="_top"
           >
             Open theme editor
           </Button>
@@ -380,7 +380,7 @@ export function TimerForm({ timer, onSave, isLoading }) {
           <Button
             url="https://admin.shopify.com/themes/current/editor?context=apps&activateAppId=timer-theme-extension"
             external
-            target="_blank"
+            target="_top"
           >
             Activate App Embed
           </Button>
@@ -538,6 +538,7 @@ export function TimerForm({ timer, onSave, isLoading }) {
               onClick={handleSubmit}
               loading={isLoading}
               fullWidth
+              disabled={disabled}
             >
               Save Timer
             </Button>

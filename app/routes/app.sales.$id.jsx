@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData, useActionData, useSubmit, useNavigation, useNavigate } from "@remix-run/react";
+import { useLoaderData, useActionData, useSubmit, useNavigation, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getSale, updateSale, applySale, revertSale } from "../models/sale.server";
 import { getTimers } from "../models/timer.server";
+import { checkLimit } from "../models/billing.server";
 import {
   Page,
   Layout,
@@ -115,6 +116,7 @@ export async function loader({ request, params }) {
 
 export async function action({ request, params }) {
   const { admin } = await authenticate.admin(request);
+  try {
   const formData = await request.formData();
 
   const intent = formData.get("intent");
@@ -126,6 +128,10 @@ export async function action({ request, params }) {
   }
 
   if (intent === "reactivate") {
+    const allowed = await checkLimit(request, "sales");
+    if (!allowed) {
+        return json({ errors: { base: "You have reached the limit for your current plan. Please upgrade to reactivate this sake." } }, { status: 403 });
+    }
     const count = await applySale(params.id, admin);
     return json({ success: true, message: `Sale reactivated. ${count} prices updated.` });
   }
@@ -181,6 +187,10 @@ export async function action({ request, params }) {
   });
 
   return json({ success: true, message: "Sale updated successfully." });
+  } catch (error) {
+    console.error("Action failed:", error);
+    return json({ errors: { base: "Failed to update sale. Please try again." } }, { status: 500 });
+  }
 }
 
 export default function EditSale() {
@@ -233,6 +243,12 @@ export default function EditSale() {
   const submit = useSubmit();
   const actionData = useActionData();
   const navigation = useNavigation();
+
+  useEffect(() => {
+    if (actionData?.errors?.base) {
+      shopify.toast.show(actionData.errors.base, { isError: true });
+    }
+  }, [actionData]);
   const isLoading = navigation.state === "submitting";
 
   const [selectedCollections, setSelectedCollections] = useState([]);
@@ -857,6 +873,32 @@ export default function EditSale() {
                     </BlockStack>
                  </Card>
              </div>
+        </Layout.Section>
+      </Layout>
+    </Page>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const navigate = useNavigate();
+
+  return (
+    <Page title="Error">
+      <Layout>
+        <Layout.Section>
+          <Banner tone="critical" title="Something went wrong">
+            <p>
+              {isRouteErrorResponse(error)
+                ? `${error.status} ${error.statusText} - ${error.data}`
+                : error instanceof Error
+                ? error.message
+                : "Unknown error occurred"}
+            </p>
+            <div style={{ marginTop: "1rem" }}>
+              <Button onClick={() => window.location.reload()}>Reload Page</Button>
+            </div>
+          </Banner>
         </Layout.Section>
       </Layout>
     </Page>
