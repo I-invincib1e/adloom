@@ -86,7 +86,7 @@ export default function HelpPage() {
                   Can't find what you're looking for? We're happy to help.
                 </Text>
                 <InlineStack gap="300">
-                  <Button url="mailto:support@loomapp.com">Email support</Button>
+                  <Button url="mailto:Hello@adloomx.com">Email support</Button>
                   <Button variant="plain">View documentation</Button>
                 </InlineStack>
               </BlockStack>

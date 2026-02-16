@@ -23,7 +23,7 @@ export default function App() {
           Home
         </Link>
         <Link to="/app/timers">Timers</Link>
-        <Link to="/app/coupons">Coupons</Link>
+        <Link to="/app/coupons">Offers</Link>
         <Link to="/app/pricing">Pricing plans</Link>
         <Link to="/app/help">Help & Support</Link>
       </NavMenu>

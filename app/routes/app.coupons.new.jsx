@@ -467,8 +467,8 @@ export default function NewCouponPage() {
   );
 
   return (
-    <Page title="Advanced Coupon Builder" backAction={{ url: "/app/coupons" }}>
-      {!allowed && <Banner tone="warning" title="Limit Reached" marginBottom="400">Upgrade to create more coupons.</Banner>}
+    <Page title="Advanced Offer Builder" backAction={{ url: "/app/coupons" }}>
+      {!allowed && <Banner tone="warning" title="Limit Reached" marginBottom="400">Upgrade to create more offers.</Banner>}
       
       <Layout>
         <Layout.Section>
@@ -540,7 +540,7 @@ export default function NewCouponPage() {
               loading={isLoading}
               disabled={!allowed}
             >
-              Create Coupon
+              Create Offer
             </Button>
           </BlockStack>
         </Layout.Section>

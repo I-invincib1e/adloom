@@ -96,7 +96,7 @@ export async function action({ request, params }) {
     products,
   });
 
-  return json({ success: true, message: "Coupon updated successfully." });
+  return json({ success: true, message: "Offer updated successfully." });
 }
 
 export default function EditCouponPage() {
@@ -462,7 +462,7 @@ export default function EditCouponPage() {
   );
 
   return (
-    <Page title="Edit Coupon" backAction={{ url: "/app/coupons" }}>
+    <Page title="Edit Offer" backAction={{ url: "/app/coupons" }}>
       <Layout>
         <Layout.Section>
           {actionData?.success && <Banner tone="success" title={actionData.message} marginBottom="400" />}
@@ -509,7 +509,7 @@ export default function EditCouponPage() {
                 </div>
               </BlockStack>
             </Card>
-            <Button variant="primary" size="large" fullWidth onClick={handleSubmit} loading={isLoading}>Save Coupon</Button>
+            <Button variant="primary" size="large" fullWidth onClick={handleSubmit} loading={isLoading}>Save Offer</Button>
           </BlockStack>
         </Layout.Section>
       </Layout>

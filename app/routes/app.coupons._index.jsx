@@ -97,24 +97,24 @@ export default function CouponsPage() {
 
   const emptyStateMarkup = (
     <EmptyState
-      heading="Create your first coupon offer"
+      heading="Create your first offer"
       action={{
-        content: "Create Coupon",
+        content: "Create Offer",
         url: "/app/coupons/new",
       }}
       image="https://cdn.shopify.com/s/files/1/0262/4071/2726/files/emptystate-files.png"
     >
       <p>
-        Create coupon codes with offers and display them on your product pages.
+        Create offers and display them on your product pages.
       </p>
     </EmptyState>
   );
 
   return (
     <Page
-      title="Coupons"
+      title="Offers"
       primaryAction={{
-        content: "Create Coupon",
+        content: "Create Offer",
         url: "/app/coupons/new",
       }}
     >
@@ -125,7 +125,7 @@ export default function CouponsPage() {
               emptyStateMarkup
             ) : (
               <IndexTable
-                resourceName={{ singular: "coupon", plural: "coupons" }}
+                resourceName={{ singular: "offer", plural: "offers" }}
                 itemCount={coupons.length}
                 headings={[
                   { title: "Offer" },
