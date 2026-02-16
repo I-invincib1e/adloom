@@ -18,62 +18,6 @@ const shopify = shopifyApp({
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
-  billing: {
-    "Basic": {
-      lineItems: [{
-        amount: 9.99,
-        currencyCode: "USD",
-        interval: BillingInterval.Every30Days,
-      }],
-      trialDays: 7,
-      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
-    },
-    "Basic Annual": {
-      lineItems: [{
-        amount: 99.0,
-        currencyCode: "USD",
-        interval: BillingInterval.Annual,
-      }],
-      trialDays: 7,
-      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
-    },
-    "Growth": {
-      lineItems: [{
-        amount: 19.99,
-        currencyCode: "USD",
-        interval: BillingInterval.Every30Days,
-      }],
-      trialDays: 7,
-      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
-    },
-    "Growth Annual": {
-      lineItems: [{
-        amount: 199.0,
-        currencyCode: "USD",
-        interval: BillingInterval.Annual,
-      }],
-      trialDays: 7,
-      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
-    },
-    "Pro": {
-      lineItems: [{
-        amount: 29.99,
-        currencyCode: "USD",
-        interval: BillingInterval.Every30Days,
-      }],
-      trialDays: 7,
-      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
-    },
-    "Pro Annual": {
-      lineItems: [{
-        amount: 299.0,
-        currencyCode: "USD",
-        interval: BillingInterval.Annual,
-      }],
-      trialDays: 7,
-      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
-    },
-  },
   future: {
     unstable_newEmbeddedAuthStrategy: true,
     expiringOfflineAccessTokens: true,
