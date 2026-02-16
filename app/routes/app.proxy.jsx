@@ -3,30 +3,21 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
 export async function loader({ request }) {
+  const { session } = await authenticate.public.appProxy(request);
+  const shop = session.shop;
+  
   const url = new URL(request.url);
   const type = url.searchParams.get("type");
   const rawProductId = url.searchParams.get("productId");
 
-  console.log(`[Proxy Request] type=${type}, productId=${rawProductId}`);
-
-  try {
-    // Attempt authentication but don't block yet while debugging
-    await authenticate.public.appProxy(request);
-  } catch (e) {
-    console.error("Proxy Auth Check Error (Debugging):", e.message);
-  }
+  console.log(`[Proxy Request] shop=${shop}, type=${type}, productId=${rawProductId}`);
 
   if (!rawProductId) {
-    return json({ error: "Missing productId", debug: { url: request.url } }, { status: 400 });
+    return json({ error: "Missing productId" }, { status: 400 });
   }
 
   const gid = rawProductId.startsWith("gid://") ? rawProductId : `gid://shopify/Product/${rawProductId}`;
   const numericId = rawProductId.replace("gid://shopify/Product/", "");
-
-  // Diagnostics: Check total counts in DB
-  const totalSales = await db.sale.count();
-  const activeSales = await db.sale.count({ where: { status: "ACTIVE" } });
-  const totalCoupons = await db.coupon.count();
 
   // --- Coupon Offers ---
   if (type === "coupons") {
@@ -34,7 +25,7 @@ export async function loader({ request }) {
     const vendor = url.searchParams.get("vendor") || "";
     
     const { getCouponsForProduct } = await import("../models/coupon.server");
-    const coupons = await getCouponsForProduct(gid, { tags, vendor });
+    const coupons = await getCouponsForProduct(gid, { tags, vendor }, shop);
 
     return json({
       coupons: coupons.map((c) => ({
@@ -42,13 +33,7 @@ export async function loader({ request }) {
         couponCode: c.couponCode,
         description: c.description,
         style: c.style,
-      })),
-      debug: { 
-        count: coupons.length, 
-        gid, 
-        totalCouponsInDb: totalCoupons,
-        activeCriteria: { tags, vendor }
-      }
+      }))
     });
   }
 
@@ -56,6 +41,7 @@ export async function loader({ request }) {
   const now = new Date();
   const sales = await db.sale.findMany({
     where: {
+      shop,
       status: "ACTIVE",
       startTime: { lte: now },
       endTime: { gte: now },
@@ -79,13 +65,6 @@ export async function loader({ request }) {
     timer: saleWithTimer ? {
       ...saleWithTimer.timer,
       endTime: saleWithTimer.endTime,
-    } : null,
-    debug: { 
-      matched: !!saleWithTimer, 
-      gid, 
-      numericId, 
-      dbStats: { totalSales, activeSales },
-      now: now.toISOString()
-    }
+    } : null
   });
 }

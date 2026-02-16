@@ -88,62 +88,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         container.innerHTML = html;
         container.style.display = "block";
 
-        // --- Placement Logic ---
-        let injected = false;
-        const { cssSelector, embedPosition } = config;
-
-        // 1. Explicit Selector (High Priority)
-        if (cssSelector && cssSelector.trim() !== "") {
-            const target = document.querySelector(cssSelector);
-            if (target) {
-                const pos = embedPosition || 'last_child';
-                // Move the container
-                if (pos === 'before') target.parentNode.insertBefore(container, target);
-                else if (pos === 'after') target.parentNode.insertBefore(container, target.nextSibling);
-                else if (pos === 'first_child') target.prepend(container);
-                else if (pos === 'last_child') target.append(container);
-                injected = true;
-            }
-        }
-
-        // 2. Auto-Inject (Fallback) - Below Header or Announcement Bar
-        if (!injected) {
-            const headerSelectors = [
-                ".announcement-bar",
-                "#shopify-section-announcement-bar",
-                "#shopify-section-header", 
-                "sticky-header",
-                ".sticky-header",
-                "header.site-header",
-                ".header-wrapper",
-                "header[role='banner']",
-                ".section-header"
-            ];
-
-            for (const sel of headerSelectors) {
-                const header = document.querySelector(sel);
-                if (header && header.offsetParent !== null) { // Ensure it's visible
-                    header.parentNode.insertBefore(container, header.nextSibling);
-                    injected = true;
-                    break;
-                }
-            }
-        }
-
-        // 3. Page specific injection (Product Page)
-        if (!injected && window.location.pathname.includes('/products/')) {
-            const productForm = document.querySelector('form[action*="/cart/add"]');
-            if (productForm) {
-                productForm.parentNode.insertBefore(container, productForm);
-                injected = true;
-            }
-        }
-
-        // 4. Last Resort: Prepend to Body (Top of page)
-        if (!injected && container.parentNode !== document.body) {
-            document.body.prepend(container);
-        }
-        
         // Cache elements for updates - Scoped to this container
         const daysEl = container.querySelector(".rockit-days");
         const hoursEl = container.querySelector(".rockit-hours");

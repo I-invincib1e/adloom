@@ -12,5 +12,10 @@ export const action = async ({ request }) => {
     await db.session.deleteMany({ where: { shop } });
   }
 
+  // Comprehensive cleanup
+  await db.sale.deleteMany({ where: { shop } });
+  await db.coupon.deleteMany({ where: { shop } });
+  await db.timer.deleteMany({ where: { shop } });
+
   return new Response();
 };

@@ -25,13 +25,13 @@ import {
 } from "@shopify/polaris";
 
 export async function loader({ request }) {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   const allowed = await checkLimit(request, "coupons");
   return json({ allowed });
 }
 
 export async function action({ request }) {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   const allowed = await checkLimit(request, "coupons");
   if (!allowed) {
       return json({ errors: { base: "Limit reached" } }, { status: 403 });
@@ -58,6 +58,7 @@ export async function action({ request }) {
   const products = JSON.parse(productsStr || "[]");
 
   await createCoupon({
+    shop: session.shop,
     offerTitle,
     couponCode: couponCode.toUpperCase(),
     description,

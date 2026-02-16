@@ -15,17 +15,19 @@ import {
 } from "@shopify/polaris";
 
 export async function loader({ request }) {
-  await authenticate.admin(request);
-  const coupons = await getCoupons();
+  const { session } = await authenticate.admin(request);
+  const coupons = await getCoupons(session.shop);
   return json({ coupons });
 }
 
 export async function action({ request }) {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   const formData = await request.formData();
   const id = formData.get("id");
 
   if (formData.get("action") === "delete") {
+    const coupon = await getCoupon(id, session.shop);
+    if (!coupon) throw new Response("Unauthorized", { status: 403 });
     await deleteCoupon(id);
   }
 

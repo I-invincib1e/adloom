@@ -30,10 +30,10 @@ import { SearchIcon } from "@shopify/polaris-icons";
 import { StrategyExample } from "../components/StrategyExample";
 
 export async function loader({ request }) {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   const allowed = await checkLimit(request, "sales");
   try {
-    const timers = await getTimers();
+    const timers = await getTimers(session.shop);
     return json({ timers, allowed });
   } catch (error) {
     console.error("Loader failed:", error);
@@ -42,7 +42,7 @@ export async function loader({ request }) {
 }
 
 export async function action({ request }) {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   const allowed = await checkLimit(request, "sales");
   if (!allowed) {
     return json({ errors: { base: "You have reached the limit for your current plan. Please upgrade to create more sales." } }, { status: 403 });
@@ -205,6 +205,7 @@ export async function action({ request }) {
   const uniqueItems = Array.from(new Map(items.map(item => [item.variantId, item])).values());
 
   const sale = await createSale({
+    shop: session.shop,
     title,
     discountType,
     value,

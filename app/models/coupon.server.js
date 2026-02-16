@@ -1,20 +1,30 @@
 import db from "../db.server";
 
-export async function getCoupons() {
+export async function getCoupons(shop) {
   return db.coupon.findMany({
+    where: { shop },
     orderBy: { createdAt: "desc" },
     include: { products: true },
   });
 }
 
-export async function getCoupon(id) {
-  return db.coupon.findUnique({
+export async function getCoupon(id, shop) {
+  const coupon = await db.coupon.findUnique({
     where: { id },
     include: { products: true },
   });
+  if (!coupon || (shop && coupon.shop !== shop)) return null;
+  return coupon;
 }
 
-export async function createCoupon(data) {
+export async function deleteCoupon(id, shop) {
+  const coupon = await getCoupon(id, shop);
+  if (!coupon) return;
+  await db.couponProduct.deleteMany({ where: { couponId: id } });
+  return db.coupon.delete({ where: { id } });
+}
+
+export async function createCoupon(data, shop) {
   const { products, ...couponData } = data;
   
   // products is now an object: { type, products: [], collections: [], tags: [], vendors: [] }
@@ -24,6 +34,7 @@ export async function createCoupon(data) {
   return db.coupon.create({
     data: {
       ...couponData,
+      shop,
       startTime: new Date(couponData.startTime),
       endTime: new Date(couponData.endTime),
       products: {

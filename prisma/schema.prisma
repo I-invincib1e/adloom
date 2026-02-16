@@ -35,6 +35,7 @@ model Session {
 
 model Sale {
   id           String     @id @default(uuid())
+  shop         String     @default("unknown")
   title        String
   discountType String
   value        Float
@@ -61,7 +62,7 @@ model Sale {
 model SaleItem {
   id            String @id @default(uuid())
   saleId        String
-  sale          Sale   @relation(fields: [saleId], references: [id])
+  sale          Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
   productId     String
   variantId     String
   originalPrice Float
@@ -69,6 +70,7 @@ model SaleItem {
 
 model Timer {
   id           String   @id @default(uuid())
+  shop         String   @default("unknown")
   name         String
   style        String   // JSON: colors, layout, font size, etc.
   textTemplate String
@@ -80,6 +82,7 @@ model Timer {
 
 model Coupon {
   id          String          @id @default(uuid())
+  shop         String         @default("unknown")
   offerTitle  String          // "Buy 1 Get 1"
   couponCode  String          // "BYG1"
   description String?
@@ -95,6 +98,6 @@ model Coupon {
 model CouponProduct {
   id        String @id @default(uuid())
   couponId  String
-  coupon    Coupon @relation(fields: [couponId], references: [id])
+  coupon    Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
   productId String
 }

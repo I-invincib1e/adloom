@@ -4,66 +4,59 @@
  * and opens a sidebar drawer when there are more than 2 offers.
  */
 document.addEventListener("DOMContentLoaded", async () => {
-  const container = document.querySelector(".rockit-coupons-wrapper");
-  if (!container) return;
+  const containers = document.querySelectorAll(".rockit-coupons-wrapper");
+  if (containers.length === 0) return;
 
-  const productId = container.dataset.productId;
-  const tags = container.dataset.tags || "";
-  const vendor = container.dataset.vendor || "";
-  if (!productId) return;
+  containers.forEach(async (container) => {
+    const productId = container.dataset.productId;
+    const tags = container.dataset.tags || "";
+    const vendor = container.dataset.vendor || "";
+    if (!productId) return;
 
-  try {
-    const res = await fetch(`/apps/timer?type=coupons&productId=${productId}&tags=${encodeURIComponent(tags)}&vendor=${encodeURIComponent(vendor)}`);
-    if (!res.ok) return;
+    try {
+      const res = await fetch(`/apps/timer?type=coupons&productId=${productId}&tags=${encodeURIComponent(tags)}&vendor=${encodeURIComponent(vendor)}&t=${Date.now()}`);
+      const data = await res.json();
+      
+      if (!data.coupons || data.coupons.length === 0) {
+        container.style.display = "none";
+        return;
+      }
 
-    const data = await res.json();
-    if (!data.coupons || data.coupons.length === 0) return;
+      const coupons = data.coupons;
+      const maxVisible = 2;
+      const visibleCoupons = coupons.slice(0, maxVisible);
+      const hiddenCoupons = coupons.slice(maxVisible);
 
-    const coupons = data.coupons;
-    const maxVisible = 2;
-    const visibleCoupons = coupons.slice(0, maxVisible);
-    const hiddenCoupons = coupons.slice(maxVisible);
-
-    // Render visible coupon cards
-    let html = "";
-    visibleCoupons.forEach((c, i) => {
-      html += renderCouponCard(c, i);
-    });
-
-    // "More offers" button
-    if (hiddenCoupons.length > 0) {
-      html += `<button class="rockit-more-btn" id="rockit-more-btn">
-        View ${hiddenCoupons.length} more offer${hiddenCoupons.length > 1 ? "s" : ""} →
-      </button>`;
-    }
-
-    container.innerHTML = html;
-    container.style.display = "block";
-
-    // --- Placement Logic ---
-    let injected = false;
-    // Auto-Inject - Above Product Form on Product Pages
-    if (window.location.pathname.includes('/products/')) {
-        const productForm = document.querySelector('form[action*="/cart/add"]');
-        if (productForm) {
-            productForm.parentNode.insertBefore(container, productForm);
-            injected = true;
-        }
-    }
-
-    // Attach events to visible cards
-    attachCardEvents(container);
-    
-    // Build sidebar if there are hidden coupons
-    if (hiddenCoupons.length > 0) {
-      buildSidebar(coupons);
-      document.getElementById("rockit-more-btn").addEventListener("click", () => {
-        openSidebar();
+      // Render visible coupon cards
+      let html = "";
+      visibleCoupons.forEach((c, i) => {
+        html += renderCouponCard(c, i);
       });
+
+      // "More offers" button
+      if (hiddenCoupons.length > 0) {
+        html += `<button class="rockit-more-btn" id="rockit-more-btn-${productId}">
+          View ${hiddenCoupons.length} more offer${hiddenCoupons.length > 1 ? "s" : ""} →
+        </button>`;
+      }
+
+      container.innerHTML = html;
+      container.style.display = "block";
+
+      // Attach events to visible cards
+      attachCardEvents(container);
+      
+      // Build sidebar if there are hidden coupons
+      if (hiddenCoupons.length > 0) {
+        buildSidebar(coupons, productId);
+        document.getElementById(`rockit-more-btn-${productId}`).addEventListener("click", () => {
+          openSidebar(productId);
+        });
+      }
+    } catch (e) {
+      console.error("[Rockit Coupons]", e);
     }
-  } catch (e) {
-    console.error("[Rockit Coupons]", e);
-  }
+  });
 });
 
 function renderCouponCard(coupon, index) {
@@ -164,17 +157,20 @@ function attachCardEvents(root) {
   });
 }
 
-function buildSidebar(allCoupons) {
+function buildSidebar(allCoupons, productId) {
+  // Prevent duplicate sidebar
+  if (document.getElementById(`rockit-sidebar-${productId}`)) return;
+
   // Overlay
   const overlay = document.createElement("div");
   overlay.className = "rockit-sidebar-overlay";
-  overlay.id = "rockit-sidebar-overlay";
-  overlay.addEventListener("click", closeSidebar);
+  overlay.id = `rockit-sidebar-overlay-${productId}`;
+  overlay.addEventListener("click", () => closeSidebar(productId));
 
   // Sidebar
   const sidebar = document.createElement("div");
   sidebar.className = "rockit-sidebar";
-  sidebar.id = "rockit-sidebar";
+  sidebar.id = `rockit-sidebar-${productId}`;
 
   let cardsHtml = "";
   allCoupons.forEach((c, i) => {
@@ -184,7 +180,7 @@ function buildSidebar(allCoupons) {
   sidebar.innerHTML = `
     <div class="rockit-sidebar-header">
       <h3>Available Offers</h3>
-      <button class="rockit-sidebar-close" id="rockit-sidebar-close">✕</button>
+      <button class="rockit-sidebar-close" id="rockit-sidebar-close-${productId}">✕</button>
     </div>
     <div class="rockit-sidebar-body">
       ${cardsHtml}
@@ -193,21 +189,21 @@ function buildSidebar(allCoupons) {
   document.body.appendChild(overlay);
   document.body.appendChild(sidebar);
 
-  document.getElementById("rockit-sidebar-close").addEventListener("click", closeSidebar);
+  document.getElementById(`rockit-sidebar-close-${productId}`).addEventListener("click", () => closeSidebar(productId));
 
   // Attach events in sidebar
   attachCardEvents(sidebar);
 }
 
-function openSidebar() {
-  document.getElementById("rockit-sidebar-overlay").classList.add("open");
-  document.getElementById("rockit-sidebar").classList.add("open");
+function openSidebar(productId) {
+  document.getElementById(`rockit-sidebar-overlay-${productId}`).classList.add("open");
+  document.getElementById(`rockit-sidebar-${productId}`).classList.add("open");
   document.body.style.overflow = "hidden";
 }
 
-function closeSidebar() {
-  document.getElementById("rockit-sidebar-overlay").classList.remove("open");
-  document.getElementById("rockit-sidebar").classList.remove("open");
+function closeSidebar(productId) {
+  document.getElementById(`rockit-sidebar-overlay-${productId}`).classList.remove("open");
+  document.getElementById(`rockit-sidebar-${productId}`).classList.remove("open");
   document.body.style.overflow = "";
 }
 

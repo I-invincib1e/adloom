@@ -49,9 +49,9 @@ function timeAgo(dateString) {
 }
 
 export async function loader({ request }) {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   try {
-    const sales = await getSales();
+    const sales = await getSales(session.shop);
     return json({ sales });
   } catch (error) {
     console.error("Loader failed:", error);
@@ -60,7 +60,7 @@ export async function loader({ request }) {
 }
 
 export async function action({ request }) {
-  const { admin } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
   const formData = await request.formData();
   const action = formData.get("action");
   const saleId = formData.get("saleId");

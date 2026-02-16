@@ -37,18 +37,18 @@ function timeAgo(dateString) {
 }
 
 export async function loader({ request }) {
-  await authenticate.admin(request);
-  const timers = await getTimers();
+  const { session } = await authenticate.admin(request);
+  const timers = await getTimers(session.shop);
   return json({ timers });
 }
 
 export async function action({ request }) {
-  const { admin } = await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   const formData = await request.formData();
   const id = formData.get("id");
   
   if (formData.get("action") === "delete") {
-     await deleteTimer(id);
+     await deleteTimer(id, session.shop);
   }
   
   return json({ success: true });

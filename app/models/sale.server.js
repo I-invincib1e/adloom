@@ -1,8 +1,9 @@
 import prisma from "../db.server";
 
-export async function getSales() {
+export async function getSales(shop) {
   try {
     return await prisma.sale.findMany({
+      where: { shop },
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { items: true } } },
     });
@@ -30,6 +31,7 @@ export async function deleteSale(saleId, admin) {
 }
 
 export async function createSale({
+  shop,
   title,
   discountType,
   value,
@@ -50,6 +52,7 @@ export async function createSale({
     // items should be an array of { productId, variantId }
     return await prisma.sale.create({
       data: {
+        shop,
         title,
         discountType,
         value: parseFloat(value),
@@ -133,12 +136,15 @@ export async function updateSale(id, {
   }
 }
 
-export async function getSale(id) {
+export async function getSale(id, shop) {
   try {
-    return await prisma.sale.findUnique({
+    const sale = await prisma.sale.findUnique({
       where: { id },
       include: { items: true },
     });
+
+    if (!sale || (shop && sale.shop !== shop)) return null;
+    return sale;
   } catch (error) {
     console.error(`Error fetching sale ${id}:`, error);
     return null;

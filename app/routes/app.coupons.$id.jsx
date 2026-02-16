@@ -30,8 +30,8 @@ import {
 } from "@shopify/polaris";
 
 export async function loader({ request, params }) {
-  const { admin } = await authenticate.admin(request);
-  const coupon = await getCoupon(params.id);
+  const { admin, session } = await authenticate.admin(request);
+  const coupon = await getCoupon(params.id, session.shop);
   if (!coupon) throw new Response("Not Found", { status: 404 });
 
   // Fetch product titles from Shopify
@@ -63,7 +63,7 @@ export async function loader({ request, params }) {
 }
 
 export async function action({ request, params }) {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   const formData = await request.formData();
 
   const offerTitle = formData.get("offerTitle");
@@ -86,7 +86,11 @@ export async function action({ request, params }) {
 
   const products = JSON.parse(productsStr || "[]");
 
+  const coupon = await getCoupon(params.id, session.shop);
+  if (!coupon) throw new Response("Unauthorized", { status: 403 });
+
   await updateCoupon(params.id, {
+    shop: session.shop,
     offerTitle,
     couponCode: couponCode.toUpperCase(),
     description,

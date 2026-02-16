@@ -32,10 +32,10 @@ import { StrategyExample } from "../components/StrategyExample";
 
 export async function loader({ request, params }) {
   console.log("Loading Sale:", params.id); // Debug Log
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   
   try {
-    const sale = await getSale(params.id);
+    const sale = await getSale(params.id, session.shop);
     if (!sale) {
         console.error("Sale not found for ID:", params.id);
         throw new Response("Sale not found", { status: 404 });
@@ -99,7 +99,6 @@ export async function loader({ request, params }) {
     }));
 
     // Get shop domain for preview
-    const session = await admin.rest.resources.Shop.all({ session: admin.session || {} }).catch(() => null);
     let shopDomain = "";
     try {
         const shopRes = await admin.graphql(`{ shop { myshopifyDomain } }`);
@@ -107,7 +106,7 @@ export async function loader({ request, params }) {
         shopDomain = shopData.data?.shop?.myshopifyDomain || "";
     } catch {}
 
-    const timers = await getTimers();
+    const timers = await getTimers(session.shop);
     return json({ sale: { ...sale, items: enrichedItems }, shopDomain, timers });
   } catch (error) {
     console.error("Loader Error:", error);
@@ -116,7 +115,7 @@ export async function loader({ request, params }) {
 }
 
 export async function action({ request, params }) {
-  const { admin } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
   try {
   const formData = await request.formData();
 
@@ -124,11 +123,16 @@ export async function action({ request, params }) {
 
   // Handle action buttons
   if (intent === "deactivate") {
+    const sale = await getSale(params.id, session.shop);
+    if (!sale) throw new Response("Unauthorized", { status: 403 });
     await revertSale(params.id, admin);
     return json({ success: true, message: "Sale deactivated successfully." });
   }
 
   if (intent === "reactivate") {
+    const sale = await getSale(params.id, session.shop);
+    if (!sale) throw new Response("Unauthorized", { status: 403 });
+
     const allowed = await checkLimit(request, "sales");
     if (!allowed) {
         return json({ errors: { base: "You have reached the limit for your current plan. Please upgrade to reactivate this sake." } }, { status: 403 });
@@ -169,7 +173,11 @@ export async function action({ request, params }) {
 
   const uniqueItems = Array.from(new Map(items.map(item => [item.variantId, item])).values());
 
+  const sale = await getSale(params.id, session.shop);
+  if (!sale) throw new Response("Unauthorized", { status: 403 });
+
   await updateSale(params.id, {
+    shop: session.shop,
     title,
     discountType,
     value,
