@@ -8,24 +8,22 @@ import { Page, Modal, Text, BlockStack } from "@shopify/polaris";
 import { useState } from "react";
 
 export async function loader({ request, params }) {
-  await authenticate.admin(request);
-  const timer = await getTimer(params.id);
+  const { session } = await authenticate.admin(request);
+  const timer = await getTimer(params.id, session.shop);
   if (!timer) throw new Response("Not Found", { status: 404 });
   return json({ timer });
 }
 
 export async function action({ request, params }) {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   const contentType = request.headers.get("content-type") || "";
 
   if (contentType.includes("application/json")) {
-    // Save/update timer
     const formData = await request.json();
-    await updateTimer(params.id, formData);
+    await updateTimer(params.id, formData, session.shop);
     return redirect("/app/timers?success=true");
   }
 
-  // Form data actions (duplicate / delete)
   const formData = await request.formData();
   const actionType = formData.get("action");
 
@@ -34,12 +32,12 @@ export async function action({ request, params }) {
     if (!allowed) {
         return json({ errors: { base: "Limit reached" } }, { status: 403 });
     }
-    const newTimer = await duplicateTimer(params.id);
+    const newTimer = await duplicateTimer(params.id, session.shop);
     return redirect(`/app/timers/${newTimer.id}`);
   }
 
   if (actionType === "delete") {
-    await deleteTimer(params.id);
+    await deleteTimer(params.id, session.shop);
     return redirect("/app/timers?deleted=true");
   }
 

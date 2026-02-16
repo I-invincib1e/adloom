@@ -13,14 +13,14 @@ export async function loader({ request }) {
 }
 
 export async function action({ request }) {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
   const allowed = await checkLimit(request, "timers");
   if (!allowed) {
       return json({ errors: { base: "Limit reached" } }, { status: 403 });
   }
   const formData = await request.json(); // Use JSON submit
   
-  await createTimer(formData);
+  await createTimer(formData, session.shop);
   return redirect("/app/timers?success=true");
 }
 

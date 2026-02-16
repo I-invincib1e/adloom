@@ -25,9 +25,9 @@ export async function deleteCoupon(id, shop) {
 }
 
 export async function createCoupon(data, shop) {
+  if (!shop) throw new Error("Shop is required");
   const { products, ...couponData } = data;
   
-  // products is now an object: { type, products: [], collections: [], tags: [], vendors: [] }
   const selection = products;
   const productItems = selection.type === "products" ? selection.products : [];
 
@@ -46,8 +46,11 @@ export async function createCoupon(data, shop) {
   });
 }
 
-export async function updateCoupon(id, data) {
-  const { products, ...couponData } = data;
+export async function updateCoupon(id, data, shop) {
+  const coupon = await getCoupon(id, shop);
+  if (!coupon) throw new Error("Unauthorized or Not Found");
+
+  const { products, shop: _shop, ...couponData } = data;
   const selection = products;
   const productItems = selection.type === "products" ? selection.products : [];
 

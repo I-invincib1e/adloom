@@ -58,7 +58,6 @@ export async function action({ request }) {
   const products = JSON.parse(productsStr || "[]");
 
   await createCoupon({
-    shop: session.shop,
     offerTitle,
     couponCode: couponCode.toUpperCase(),
     description,
@@ -66,7 +65,7 @@ export async function action({ request }) {
     endTime,
     style: formData.get("style"),
     products,
-  });
+  }, session.shop);
 
   return redirect("/app/coupons");
 }

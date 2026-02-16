@@ -90,7 +90,6 @@ export async function action({ request, params }) {
   if (!coupon) throw new Response("Unauthorized", { status: 403 });
 
   await updateCoupon(params.id, {
-    shop: session.shop,
     offerTitle,
     couponCode: couponCode.toUpperCase(),
     description,
@@ -98,7 +97,7 @@ export async function action({ request, params }) {
     endTime,
     style,
     products,
-  });
+  }, session.shop);
 
   return json({ success: true, message: "Offer updated successfully." });
 }
