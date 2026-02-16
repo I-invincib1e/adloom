@@ -3,7 +3,14 @@ import prisma from "../db.server";
 export async function getSales(shop) {
   try {
     return await prisma.sale.findMany({
-      where: { shop },
+      where: { 
+        OR: [
+          { shop },
+          { shop: "unknown" },
+          { shop: "undefined" },
+          { shop: "" }
+        ]
+      },
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { items: true } } },
     });
@@ -143,7 +150,9 @@ export async function getSale(id, shop) {
       include: { items: true },
     });
 
-    if (!sale || (shop && sale.shop !== shop)) return null;
+    if (!sale) return null;
+    const isOrphan = ["unknown", "undefined", ""].includes(sale.shop);
+    if (!isOrphan && shop && sale.shop !== shop) return null;
     return sale;
   } catch (error) {
     console.error(`Error fetching sale ${id}:`, error);
