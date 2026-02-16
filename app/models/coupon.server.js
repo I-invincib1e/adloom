@@ -71,15 +71,11 @@ export async function updateCoupon(id, data) {
   });
 }
 
-export async function deleteCoupon(id) {
-  await db.couponProduct.deleteMany({ where: { couponId: id } });
-  return db.coupon.delete({ where: { id } });
-}
-
-export async function getCouponsForProduct(productId, productData = {}) {
+export async function getCouponsForProduct(productId, productData = {}, shop) {
   const now = new Date();
   const allCoupons = await db.coupon.findMany({
     where: {
+      shop,
       status: "ACTIVE",
       startTime: { lte: now },
       endTime: { gte: now },

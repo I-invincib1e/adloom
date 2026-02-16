@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             color: ${config.titleColor || '#000'};
             font-size: ${config.fontSize || 16}px;
             font-family: ${config.typography || 'inherit'};
-            box-shadow: ${className.includes('neon') ? '0 0 15px rgba(0, 255, 255, 0.4)' : (className.includes('gold') ? '0 4px 15px rgba(187, 143, 44, 0.3)' : '0 4px 12px rgba(0,0,0,0.1)')};
+            box-shadow: ${className.includes('rockit-timer-bar') ? 'none' : (className.includes('neon') ? '0 0 15px rgba(0, 255, 255, 0.4)' : (className.includes('gold') ? '0 4px 15px rgba(187, 143, 44, 0.3)' : '0 4px 12px rgba(0,0,0,0.1)'))};
             transition: all 0.3s ease;
           ">
         `;

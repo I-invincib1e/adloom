@@ -147,6 +147,19 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
       typography: "Outfit",
       className: "rockit-timer-minimal-luxe",
     },
+    announcement: {
+      backgroundColor: "#000000",
+      borderColor: "#000000",
+      titleColor: "#ffffff",
+      subtitleColor: "#cccccc",
+      timerColor: "#ffffff",
+      borderSize: 0,
+      borderRadius: 0,
+      padding: 10,
+      fontSize: 15,
+      typography: "Outfit",
+      className: "rockit-timer-bar",
+    },
   };
 
   const handlePresetChange = (presetKey) => {
@@ -205,23 +218,29 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
       <Box paddingBlockStart="400">
         <Text variant="headingSm" as="h3">Time Labels (Short)</Text>
       </Box>
-      <FormLayout>
-        <FormLayout.Group>
-          <TextField label="Days" value={config.labels.days} onChange={(v) => handleLabelChange("days", v)} autoComplete="off" />
-          <TextField label="Hours" value={config.labels.hours} onChange={(v) => handleLabelChange("hours", v)} autoComplete="off" />
-        </FormLayout.Group>
-        <FormLayout.Group>
-          <TextField label="Minutes" value={config.labels.minutes} onChange={(v) => handleLabelChange("minutes", v)} autoComplete="off" />
-          <TextField label="Seconds" value={config.labels.seconds} onChange={(v) => handleLabelChange("seconds", v)} autoComplete="off" />
-        </FormLayout.Group>
-      </FormLayout>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <TextField label="Days" value={config.labels.days} onChange={(v) => handleLabelChange("days", v)} autoComplete="off" />
+        <TextField label="Hours" value={config.labels.hours} onChange={(v) => handleLabelChange("hours", v)} autoComplete="off" />
+        <TextField label="Minutes" value={config.labels.minutes} onChange={(v) => handleLabelChange("minutes", v)} autoComplete="off" />
+        <TextField label="Seconds" value={config.labels.seconds} onChange={(v) => handleLabelChange("seconds", v)} autoComplete="off" />
+      </div>
     </BlockStack>
   );
 
   const renderStyleTab = () => (
     <BlockStack gap="400" className="animate-fade-in-up">
       <Box>
-        <Text as="h2" variant="headingSm">Design Presets</Text>
+        <InlineStack align="space-between">
+           <Text as="h2" variant="headingSm">Design Presets</Text>
+           <Button 
+             variant="primary"
+             tone="critical"
+             pressed={config.className === "rockit-timer-bar"} 
+             onClick={() => handlePresetChange("announcement")}
+           >
+             Mode: Announcement Bar ⚡
+           </Button>
+        </InlineStack>
         <Box paddingBlockStart="200">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
             {Object.keys(PRESETS).map(key => (
@@ -247,23 +266,23 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
         <Text as="h2" variant="headingSm">Manual Customization</Text>
         <Box paddingBlockStart="200">
           <FormLayout>
-            <FormLayout.Group>
-               <ColorInput label="Background" value={config.backgroundColor} onChange={(v) => handleConfigChange("backgroundColor", v)} />
-               <ColorInput label="Border" value={config.borderColor} onChange={(v) => handleConfigChange("borderColor", v)} />
-            </FormLayout.Group>
-            <FormLayout.Group>
-               <ColorInput label="Title Color" value={config.titleColor} onChange={(v) => handleConfigChange("titleColor", v)} />
-               <ColorInput label="Timer Color" value={config.timerColor} onChange={(v) => handleConfigChange("timerColor", v)} />
-            </FormLayout.Group>
-            <FormLayout.Group>
-              <Select label="Typography" options={["Inter", "Roboto", "Monospace", "Serif", "Outfit"].map(f => ({ label: f, value: f }))} value={config.typography || "Inter"} onChange={(v) => handleConfigChange("typography", v)} />
-              <RangeSlider label="Font Size" value={config.fontSize} onChange={(v) => handleConfigChange("fontSize", v)} min={12} max={32} output />
-            </FormLayout.Group>
-            <FormLayout.Group>
-              <RangeSlider label="Corner Radius" value={config.borderRadius} onChange={(v) => handleConfigChange("borderRadius", v)} min={0} max={30} output />
-              <RangeSlider label="Inner Padding" value={config.padding} onChange={(v) => handleConfigChange("padding", v)} min={0} max={50} output />
-            </FormLayout.Group>
-            <RangeSlider label="Border Width" value={config.borderSize} onChange={(v) => handleConfigChange("borderSize", v)} min={0} max={10} output />
+             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <ColorInput label="Background" value={config.backgroundColor} onChange={(v) => handleConfigChange("backgroundColor", v)} />
+                <ColorInput label="Border" value={config.borderColor} onChange={(v) => handleConfigChange("borderColor", v)} />
+                <ColorInput label="Title Color" value={config.titleColor} onChange={(v) => handleConfigChange("titleColor", v)} />
+                <ColorInput label="Timer Color" value={config.timerColor} onChange={(v) => handleConfigChange("timerColor", v)} />
+             </div>
+             
+             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "16px" }}>
+               <Select label="Typography" options={["Inter", "Roboto", "Monospace", "Serif", "Outfit"].map(f => ({ label: f, value: f }))} value={config.typography || "Inter"} onChange={(v) => handleConfigChange("typography", v)} />
+               <RangeSlider label="Font Size" value={config.fontSize} onChange={(v) => handleConfigChange("fontSize", v)} min={12} max={32} output />
+               <RangeSlider label="Corner Radius" value={config.borderRadius} onChange={(v) => handleConfigChange("borderRadius", v)} min={0} max={30} output />
+               <RangeSlider label="Inner Padding" value={config.padding} onChange={(v) => handleConfigChange("padding", v)} min={0} max={50} output />
+             </div>
+
+             <Box paddingBlockStart="200">
+               <RangeSlider label="Border Width" value={config.borderSize} onChange={(v) => handleConfigChange("borderSize", v)} min={0} max={10} output />
+             </Box>
           </FormLayout>
         </Box>
       </Box>
@@ -328,11 +347,11 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
                     style={{
                       background: config.backgroundColor,
                       border: `solid ${config.borderSize}px ${config.borderColor}`,
-                      borderRadius: `${config.borderRadius}px`,
+                      borderRadius: config.className === "rockit-timer-bar" ? "0px" : `${config.borderRadius}px`,
                       padding: `${config.padding}px`,
                       color: config.titleColor,
                       fontFamily: config.typography || "Inter",
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      boxShadow: config.className === "rockit-timer-bar" ? "none" : "0 4px 12px rgba(0,0,0,0.1)",
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
