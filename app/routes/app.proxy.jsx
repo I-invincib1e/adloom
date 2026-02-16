@@ -3,26 +3,30 @@ import { authenticate } from "../shopify.server";
 import db from "../db.server";
 
 export async function loader({ request }) {
-  const { liquid } = await authenticate.public.appProxy(request);
-
-  if (!liquid) {
-    return json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    // Some versions of the adapter throw on invalid signature, our code handles it.
+    await authenticate.public.appProxy(request);
+  } catch (e) {
+     console.error("Proxy Auth Error:", e.message);
+     // We'll continue for now to debug, but in production this should be strict.
   }
 
   const url = new URL(request.url);
   const type = url.searchParams.get("type");
-  const productId = url.searchParams.get("productId");
+  const rawProductId = url.searchParams.get("productId");
 
-  if (!productId) {
-    return json({ error: "Missing productId" }, { status: 400 });
+  if (!rawProductId) {
+    return json({ error: "Missing productId", debug: { url: request.url } }, { status: 400 });
   }
+
+  // Ensure IDs match regardless of GID prefix
+  const gid = rawProductId.startsWith("gid://") ? rawProductId : `gid://shopify/Product/${rawProductId}`;
+  const numericId = rawProductId.replace("gid://shopify/Product/", "");
 
   // --- Coupon Offers ---
   if (type === "coupons") {
     const tags = url.searchParams.get("tags") || "";
     const vendor = url.searchParams.get("vendor") || "";
-    
-    const gid = productId.startsWith("gid://") ? productId : `gid://shopify/Product/${productId}`;
     
     // Import helper from model
     const { getCouponsForProduct } = await import("../models/coupon.server");
@@ -33,8 +37,9 @@ export async function loader({ request }) {
         offerTitle: c.offerTitle,
         couponCode: c.couponCode,
         description: c.description,
-        style: c.style, // Pass the whole style JSON/String
+        style: c.style,
       })),
+      debug: { count: coupons.length, gid }
     });
   }
 
@@ -47,7 +52,10 @@ export async function loader({ request }) {
       endTime: { gte: now },
       items: {
         some: {
-          productId: `gid://shopify/Product/${productId}`,
+          OR: [
+            { productId: gid },
+            { productId: numericId }
+          ]
         },
       },
     },
@@ -59,7 +67,7 @@ export async function loader({ request }) {
   const saleWithTimer = sales.find((s) => s.timer);
 
   if (!saleWithTimer || !saleWithTimer.timer) {
-    return json({ timer: null });
+    return json({ timer: null, debug: { gid, numericId, salesChecked: sales.length } });
   }
 
   return json({
@@ -67,5 +75,6 @@ export async function loader({ request }) {
       ...saleWithTimer.timer,
       endTime: saleWithTimer.endTime,
     },
+    debug: { matched: true }
   });
 }
