@@ -5,6 +5,11 @@ import {
   Scripts,
   ScrollRestoration,
 } from "@remix-run/react";
+import premiumStyles from "./styles/premium.css?url";
+
+export const links = () => [
+  { rel: "stylesheet", href: premiumStyles },
+];
 
 export default function App() {
   return (

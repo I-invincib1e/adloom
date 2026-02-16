@@ -461,7 +461,8 @@ export default function NewSale() {
       )}
       <Layout>
         <Layout.Section>
-          <BlockStack gap="400">
+          <div className="animate-fade-in-up stagger-1">
+            <BlockStack gap="400">
             {actionData?.errors && (
                <Banner tone="critical">
                  <p>There were some errors with your submission</p>
@@ -473,61 +474,67 @@ export default function NewSale() {
                </Banner>
              )}
 
-            <Card>
-              <BlockStack gap="200">
-                <Text as="h2" variant="headingSm">Title</Text>
-                <TextField
-                  label="Title"
-                  labelHidden
-                  value={title}
-                  onChange={(val) => { dirty(setTitle)(val); validateField("title", val); }}
-                  onBlur={() => handleBlur("title")}
-                  autoComplete="off"
-                  maxLength={50}
-                  showCharacterCount
-                  helpText="Internal name for this sale."
-                  error={(touched.title && clientErrors.title) || actionData?.errors?.title}
-                />
-              </BlockStack>
-            </Card>
+            <div className="elite-card">
+              <Card>
+                <BlockStack gap="200">
+                  <Text as="h2" variant="headingSm">Title</Text>
+                  <div className="elite-input-focus">
+                    <TextField
+                      label="Title"
+                      labelHidden
+                      value={title}
+                      onChange={(val) => { dirty(setTitle)(val); validateField("title", val); }}
+                      onBlur={() => handleBlur("title")}
+                      autoComplete="off"
+                      maxLength={50}
+                      showCharacterCount
+                      helpText="Internal name for this sale."
+                      error={(touched.title && clientErrors.title) || actionData?.errors?.title}
+                    />
+                  </div>
+                </BlockStack>
+              </Card>
+            </div>
 
-            <Card>
-              <BlockStack gap="400">
-                 <Text as="h2" variant="headingSm">Discount value</Text>
-                 <InlineStack gap="400">
-                    <div style={{ flex: 1 }}>
-                        <Select
-                            label="Discount type"
-                            labelHidden
-                            options={[
-                              { label: "Percentage", value: "PERCENTAGE" },
-                              { label: "Fixed Amount", value: "FIXED_AMOUNT" },
-                            ]}
-                            value={discountType}
-                            onChange={dirty(setDiscountType)}
-                        />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                        <TextField
-                            label="Value"
-                            labelHidden
-                            type="number"
-                            value={value}
-                            onChange={(val) => { dirty(setValue)(val); validateField("value", val); }}
-                            onBlur={() => handleBlur("value")}
-                            suffix={discountType === "PERCENTAGE" ? "%" : ""}
-                            autoComplete="off"
-                            error={(touched.value && clientErrors.value) || actionData?.errors?.value}
-                        />
-                    </div>
-                 </InlineStack>
-                 <Checkbox
-                    label="Override cents"
-                    checked={overrideCents}
-                    onChange={setOverrideCents}
-                 />
-              </BlockStack>
-            </Card>
+            <div className="animate-fade-in-up stagger-2 elite-card">
+              <Card>
+                <BlockStack gap="400">
+                   <Text as="h2" variant="headingSm">Discount value</Text>
+                   <InlineStack gap="400">
+                      <div style={{ flex: 1 }} className="elite-input-focus">
+                          <Select
+                              label="Discount type"
+                              labelHidden
+                              options={[
+                                { label: "Percentage", value: "PERCENTAGE" },
+                                { label: "Fixed Amount", value: "FIXED_AMOUNT" },
+                              ]}
+                              value={discountType}
+                              onChange={dirty(setDiscountType)}
+                          />
+                      </div>
+                      <div style={{ flex: 1 }} className="elite-input-focus">
+                          <TextField
+                              label="Value"
+                              labelHidden
+                              type="number"
+                              value={value}
+                              onChange={(val) => { dirty(setValue)(val); validateField("value", val); }}
+                              onBlur={() => handleBlur("value")}
+                              suffix={discountType === "PERCENTAGE" ? "%" : ""}
+                              autoComplete="off"
+                              error={(touched.value && clientErrors.value) || actionData?.errors?.value}
+                          />
+                      </div>
+                   </InlineStack>
+                   <Checkbox
+                      label="Override cents"
+                      checked={overrideCents}
+                      onChange={setOverrideCents}
+                   />
+                </BlockStack>
+              </Card>
+            </div>
 
             <Card>
               <BlockStack gap="400">
@@ -942,6 +949,7 @@ export default function NewSale() {
             </div>
 
           </BlockStack>
+          </div>
         </Layout.Section>
         
         <Layout.Section variant="oneThird">

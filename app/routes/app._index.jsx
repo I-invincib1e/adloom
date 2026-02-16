@@ -170,7 +170,8 @@ export default function Index() {
   }, [setSearchParams]);
 
   const LaunchTrack = () => (
-    <Card padding="500">
+    <div className="animate-fade-in-up stagger-1">
+      <Card padding="500">
       <BlockStack gap="500">
         <InlineStack align="space-between" verticalAlign="center">
           <BlockStack gap="100">
@@ -240,7 +241,8 @@ export default function Index() {
           ))}
         </div>
       </BlockStack>
-    </Card>
+      </Card>
+    </div>
   );
 
   // Confirmation modal state
@@ -367,7 +369,9 @@ export default function Index() {
         </IndexTable.Cell>
         <IndexTable.Cell>
           <Badge tone={status === "ACTIVE" ? "success" : status === "PENDING" ? "attention" : "warning"}>
-            {status === "PENDING" ? "Scheduled" : status === "COMPLETED" ? "Expired" : "Active"}
+            <span className={status === "ACTIVE" ? "badge-pulse" : ""}>
+              {status === "PENDING" ? "Scheduled" : status === "COMPLETED" ? "Expired" : "Active"}
+            </span>
           </Badge>
         </IndexTable.Cell>
         <IndexTable.Cell>
@@ -457,7 +461,8 @@ export default function Index() {
             </div>
           )}
 
-          <BlockStack gap="400">
+          <div className="animate-fade-in-up stagger-2">
+            <BlockStack gap="400">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <Text as="h2" variant="headingMd">Active Campaigns</Text>
               {sales.length > 0 && (
@@ -491,6 +496,7 @@ export default function Index() {
               )}
             </Card>
           </BlockStack>
+          </div>
         </Layout.Section>
       </Layout>
 

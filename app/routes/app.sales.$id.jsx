@@ -389,7 +389,8 @@ export default function EditSale() {
     >
       <Layout>
         <Layout.Section>
-          <BlockStack gap="400">
+          <div className="animate-fade-in-up stagger-1">
+            <BlockStack gap="400">
             {/* Success/action banner */}
             {actionData?.success && (
                <Banner tone="success" title={actionData.message}>
@@ -414,22 +415,26 @@ export default function EditSale() {
                </Banner>
              )}
 
-            <Card>
-              <BlockStack gap="200">
-                <Text as="h2" variant="headingSm">Title</Text>
-                <TextField
-                  label="Title"
-                  labelHidden
-                  value={title}
-                  onChange={setTitle}
-                  autoComplete="off"
-                  maxLength={255}
-                  showCharacterCount
-                  helpText="This title is not visible to the clients."
-                  error={actionData?.errors?.title}
-                />
-              </BlockStack>
-            </Card>
+            <div className="elite-card">
+              <Card>
+                <BlockStack gap="200">
+                  <Text as="h2" variant="headingSm">Title</Text>
+                  <div className="elite-input-focus">
+                    <TextField
+                      label="Title"
+                      labelHidden
+                      value={title}
+                      onChange={setTitle}
+                      autoComplete="off"
+                      maxLength={255}
+                      showCharacterCount
+                      helpText="This title is not visible to the clients."
+                      error={actionData?.errors?.title}
+                    />
+                  </div>
+                </BlockStack>
+              </Card>
+            </div>
 
             <Card>
               <BlockStack gap="400">
@@ -522,6 +527,7 @@ export default function EditSale() {
                  </BlockStack>
               </BlockStack>
             </Card>
+
 
             <Card>
                 <BlockStack gap="400">
@@ -858,18 +864,20 @@ export default function EditSale() {
                                 {tagsToRemove.split(",").filter(t => t.trim()).map((tag, i) => (
                                     <Tag key={i}>{tag.trim()}</Tag>
                                 ))}
-                            </InlineStack>
-                        )}
-                    </BlockStack>
+                             </InlineStack>
+                         )}
+                     </BlockStack>
                  </BlockStack>
-            </Card>
+             </Card>
 
-            <div style={{ marginTop: "1rem", marginBottom: "3rem" }}>
-                 <Button variant="primary" loading={isLoading} size="large" onClick={handleSubmit}>Save Changes</Button>
-            </div>
+             <div className="animate-fade-in-up stagger-3" style={{ marginTop: "1rem", marginBottom: "3rem" }}>
+                  <Button variant="primary" loading={isLoading} size="large" onClick={handleSubmit}>Save Changes</Button>
+             </div>
 
-          </BlockStack>
+           </BlockStack>
+          </div>
         </Layout.Section>
+
 
         <Layout.Section variant="oneThird">
              <Card>
