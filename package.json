@@ -1,5 +1,5 @@
 {
-  "name": "sales-manger",
+  "name": "loom-offer-sales",
   "private": true,
   "scripts": {
     "build": "remix vite:build",

@@ -23,14 +23,14 @@ export async function action({ request }) {
   if (plan === "Free") {
     const subscription = await billing.require({
         plans: ["Basic", "Growth", "Pro", "Basic Annual", "Growth Annual", "Pro Annual"],
-        isTest: true,
+        isTest: false,
         onFailure: async () => null,
     });
     
     if (subscription) {
         await billing.cancel({
             subscriptionId: subscription.id,
-            isTest: true,
+            isTest: false,
             prorate: true,
         });
     }
@@ -43,7 +43,7 @@ export async function action({ request }) {
   try {
     await billing.request({
       plan: plan,
-      isTest: true,
+      isTest: false,
       returnUrl,
     });
   } catch (error) {

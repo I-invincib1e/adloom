@@ -64,7 +64,7 @@ export function SetupGuide({ onDismiss, salesCount }) {
               Setup guide
             </Text>
             <Text as="p" variant="bodySm" tone="subdued">
-              Follow these steps to start using the Rockit Sales Manager.
+              Follow these steps to start using the Loom - Offer & Sales.
             </Text>
             <Text as="p" variant="bodySm">
               {completedSteps} / 3 steps completed
@@ -84,23 +84,23 @@ export function SetupGuide({ onDismiss, salesCount }) {
           {/* Step 1 */}
           <StepItem
             stepNumber={1}
-            title="How Rockit works"
+            title="How Loom works"
             isOpen={openStep === 1}
             isCompleted={true} 
             onToggle={() => handleToggle(1)}
           >
-             <BlockStack gap="200">
+              <BlockStack gap="200">
                 <Text as="p" variant="bodyMd">
-                  <Text as="span" fontWeight="bold">Rockit edits prices in bulk.</Text> On activation it writes your discounted price and sets the previous price as compare-at price.
+                  <Text as="span" fontWeight="bold">Loom edits prices in bulk.</Text> On activation it writes your discounted price and sets the previous price as compare-at price.
                 </Text>
                 <Text as="p" variant="bodyMd">
                   <Text as="span" fontWeight="bold">What you see on the store:</Text> Your theme shows crossed-out price and sale badge. The app does not change your theme's design. To show discounted prices in cart, a small theme edit is usually required. We can help.
                 </Text>
                 <Text as="p" variant="bodyMd">
-                  <Text as="span" fontWeight="bold">If you make changes in your store:</Text> such as adding new products, editing collections, or updating prices — click Reactivate so Rockit can resync your active sale and update included products based on your sale criteria.
+                  <Text as="span" fontWeight="bold">If you make changes in your store:</Text> such as adding new products, editing collections, or updating prices — click Reactivate so Loom can resync your active sale and update included products based on your sale criteria.
                 </Text>
                  <Text as="p" variant="bodyMd">
-                  <Text as="span" fontWeight="bold">Please note:</Text> If your store uses another app or inventory system that updates product prices, it may override Rockit's changes. We recommend temporarily disabling such apps during the sale.
+                  <Text as="span" fontWeight="bold">Please note:</Text> If your store uses another app or inventory system that updates product prices, it may override Loom's changes. We recommend temporarily disabling such apps during the sale.
                 </Text>
                 <InlineStack gap="200">
                     <Button>Read FAQ</Button>

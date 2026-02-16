@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "dd255893fa9dba5bc6a23c21a5be4782"
-name = "Beta-sales"
+name = "Loom - Offer & Sales"
 application_url = "https://example.com"
 embedded = true
 
