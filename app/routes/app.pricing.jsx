@@ -86,35 +86,6 @@ const premiumStyles = `
     font-weight: 600;
     box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
   }
-  .toggle-container {
-    background: #f3f4f6;
-    padding: 4px;
-    border-radius: 9999px;
-    display: flex;
-    gap: 4px;
-    box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.06);
-  }
-  .toggle-btn {
-    padding: 8px 20px;
-    border-radius: 9999px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: none;
-  }
-  .toggle-btn.active {
-    background: white;
-    color: #111827;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-  }
-  .toggle-btn.inactive {
-    background: transparent;
-    color: #6b7280;
-  }
-  .toggle-btn.inactive:hover {
-    color: #374151;
-  }
 `;
 
 function UsageBar({ label, used, limit }) {

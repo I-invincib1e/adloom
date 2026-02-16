@@ -55,6 +55,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             padding: ${config.padding || 12}px;
             color: ${config.titleColor || '#000'};
             font-size: ${config.fontSize || 16}px;
+            font-family: ${config.typography || 'inherit'};
+            box-shadow: ${className.includes('neon') ? '0 0 15px rgba(0, 255, 255, 0.4)' : (className.includes('gold') ? '0 4px 15px rgba(187, 143, 44, 0.3)' : '0 4px 12px rgba(0,0,0,0.1)')};
+            transition: all 0.3s ease;
           ">
         `;
 
@@ -68,15 +71,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
         html += `</div>`;
 
-        html += `<div class="rockit-timer-digits" style="color: ${config.timerColor || '#000'}">`;
+        html += `<div class="rockit-timer-digits" style="color: ${config.timerColor || config.titleColor || '#000'}">`;
         
         const labels = config.labels || { days: "D", hours: "H", minutes: "M", seconds: "S" };
         ["days", "hours", "minutes", "seconds"].forEach(unit => {
-          // Use classes instead of IDs to avoid collisions
           html += `
             <div class="rockit-timer-unit">
               <div class="rockit-timer-val rockit-${unit}">00</div>
-              <div class="rockit-timer-label">${labels[unit]}</div>
+              <div class="rockit-timer-label" style="color: inherit; opacity: 0.7;">${labels[unit]}</div>
             </div>
           `;
         });

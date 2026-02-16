@@ -19,25 +19,21 @@ export async function loader({ request }) {
 
   // --- Coupon Offers ---
   if (type === "coupons") {
-    const now = new Date();
-    const coupons = await db.coupon.findMany({
-      where: {
-        status: "ACTIVE",
-        startTime: { lte: now },
-        endTime: { gte: now },
-        products: {
-          some: {
-            productId: `gid://shopify/Product/${productId}`,
-          },
-        },
-      },
-    });
+    const tags = url.searchParams.get("tags") || "";
+    const vendor = url.searchParams.get("vendor") || "";
+    
+    const gid = productId.startsWith("gid://") ? productId : `gid://shopify/Product/${productId}`;
+    
+    // Import helper from model
+    const { getCouponsForProduct } = await import("../models/coupon.server");
+    const coupons = await getCouponsForProduct(gid, { tags, vendor });
 
     return json({
       coupons: coupons.map((c) => ({
         offerTitle: c.offerTitle,
         couponCode: c.couponCode,
         description: c.description,
+        style: c.style, // Pass the whole style JSON/String
       })),
     });
   }

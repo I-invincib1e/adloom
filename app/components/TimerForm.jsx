@@ -80,83 +80,86 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
   // Mock preview time
   const [timeLeft] = useState({ d: "02", h: "14", m: "30", s: "15" });
 
-  // --- Banner Presets ---
+  // --- Style Presets (Aligned with Coupon Aesthetic) ---
   const PRESETS = {
     standard: {
-      backgroundColor: "#f4f6f8", // Light gray background
-      borderColor: "#dbe1e6", // Subtle border
-      borderSize: 1,
-      borderRadius: 4,
+      backgroundColor: "#ffffff",
+      borderColor: "#e1e3e5",
       titleColor: "#202223",
       subtitleColor: "#6d7175",
       timerColor: "#202223",
+      borderSize: 1,
+      borderRadius: 8,
       padding: 12,
       fontSize: 16,
-    },
-    gradient: {
-      backgroundColor: "linear-gradient(90deg, #ff8a00, #e52e71)", 
-      borderColor: "transparent",
-      borderSize: 0,
-      borderRadius: 8,
-      titleColor: "#ffffff",
-      subtitleColor: "rgba(255,255,255,0.9)",
-      timerColor: "#ffffff",
-      padding: 14,
-      fontSize: 16,
-      className: "rockit-timer-gradient",
-    },
-    glass: {
-      backgroundColor: "rgba(255, 255, 255, 0.6)", // More opaque for visibility
-      borderColor: "rgba(0, 0, 0, 0.05)",
-      borderSize: 1,
-      borderRadius: 12,
-      titleColor: "#000000",
-      subtitleColor: "#444",
-      timerColor: "#000000",
-      padding: 14,
-      fontSize: 15,
-      className: "rockit-timer-glass",
+      typography: "Inter",
+      className: "",
     },
     neon: {
       backgroundColor: "#000000",
-      borderColor: "#0ff",
+      borderColor: "#00ffff",
+      titleColor: "#00ffff",
+      subtitleColor: "#00cccc",
+      timerColor: "#ffffff",
       borderSize: 1,
       borderRadius: 4,
-      titleColor: "#0ff",
-      subtitleColor: "#0cc",
-      timerColor: "#fff",
       padding: 16,
       fontSize: 18,
+      typography: "Monospace",
       className: "rockit-timer-neon",
+    },
+    gold: {
+      backgroundColor: "linear-gradient(135deg, #bf953f, #fcf6ba, #b38728)",
+      borderColor: "#aa771c",
+      titleColor: "#3e2b00",
+      subtitleColor: "rgba(62, 43, 0, 0.8)",
+      timerColor: "#3e2b00",
+      borderSize: 1,
+      borderRadius: 12,
+      padding: 14,
+      fontSize: 16,
+      typography: "Serif",
+      className: "rockit-timer-gold",
+    },
+    glass: {
+      backgroundColor: "rgba(255, 255, 255, 0.15)",
+      borderColor: "rgba(255, 255, 255, 0.3)",
+      titleColor: "#000000",
+      subtitleColor: "#444444",
+      timerColor: "#000000",
+      borderSize: 1,
+      borderRadius: 16,
+      padding: 14,
+      fontSize: 15,
+      typography: "Outfit",
+      className: "rockit-timer-glass",
     },
     minimal: {
       backgroundColor: "#ffffff",
-      borderColor: "#e1e3e5", // Add border to minimal so it has a boundary
+      borderColor: "#111111",
+      titleColor: "#111111",
+      subtitleColor: "#666666",
+      timerColor: "#111111",
       borderSize: 1,
-      borderRadius: 4,
-      titleColor: "#202223",
-      subtitleColor: "#6d7175",
-      timerColor: "#202223",
+      borderRadius: 0,
       padding: 10,
       fontSize: 14,
+      typography: "Outfit",
+      className: "rockit-timer-minimal-luxe",
     },
   };
 
   const handlePresetChange = (presetKey) => {
-    if (!PRESETS[presetKey]) return;
     const preset = PRESETS[presetKey];
-    // Keep labels, overwrite styles
+    if (!preset) return;
     setConfig((prev) => ({
       ...prev,
       ...preset,
       layoutMode: "banner",
       preset: presetKey,
-      // If regular hex, set it. If gradient, we might need a separate field or logic.
-      // For now, assume render handles 'linear-gradient' string in backgroundColor style.
     }));
   };
 
-  // --- Color Picker Component ---
   const ColorInput = ({ label, value, onChange }) => (
     <div style={{ flex: 1 }}>
       <TextField
@@ -166,26 +169,12 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
         autoComplete="off"
         prefix={
           <div style={{ position: "relative", width: 24, height: 24 }}>
-             <div
-               style={{
-                 position: "absolute", inset: 0,
-                 background: value?.includes('gradient') ? value : value,
-                 borderRadius: 4,
-                 border: "1px solid #ddd",
-                 pointerEvents: "none",
-               }}
-             />
+             <div style={{ position: "absolute", inset: 0, background: value, borderRadius: 4, border: "1px solid #ddd" }} />
              <input
                 type="color"
-                value={(!value || value.includes('gradient')) ? "#ffffff" : value} // Fallback for gradients
+                value={(!value || value.includes('gradient')) ? "#ffffff" : value}
                 onChange={(e) => onChange(e.target.value)}
-                style={{
-                  position: "absolute", inset: 0,
-                  opacity: 0,
-                  cursor: "pointer",
-                  width: "100%", height: "100%",
-                  padding: 0, margin: 0, border: "none"
-                }}
+                style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%" }}
              />
           </div>
         }
@@ -193,9 +182,8 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
     </div>
   );
 
-  // --- Render Tabs ---
   const renderContentTab = () => (
-    <FormLayout>
+    <BlockStack gap="400" className="animate-fade-in-up stagger-1">
       <TextField
         label="Internal Name"
         value={name}
@@ -205,202 +193,98 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
         helpText="Only visible to you in the admin."
       />
       <Box paddingBlockStart="400">
-        <Text variant="headingSm" as="h3">
-          Display Text
-        </Text>
+        <Text variant="headingSm" as="h3">Display Text</Text>
       </Box>
-      <FormLayout.Group>
-        <TextField
-          label="Title"
-          value={config.title}
-          onChange={(v) => handleConfigChange("title", v)}
-          autoComplete="off"
-        />
-        <TextField
-          label="Subtitle"
-          value={config.subtitle}
-          onChange={(v) => handleConfigChange("subtitle", v)}
-          autoComplete="off"
-        />
-      </FormLayout.Group>
+      <FormLayout>
+        <FormLayout.Group>
+          <TextField label="Title" value={config.title} onChange={(v) => handleConfigChange("title", v)} autoComplete="off" />
+          <TextField label="Subtitle" value={config.subtitle} onChange={(v) => handleConfigChange("subtitle", v)} autoComplete="off" />
+        </FormLayout.Group>
+      </FormLayout>
 
       <Box paddingBlockStart="400">
-        <Text variant="headingSm" as="h3">
-          Time Labels (Short)
-        </Text>
+        <Text variant="headingSm" as="h3">Time Labels (Short)</Text>
       </Box>
-      <FormLayout.Group>
-        <TextField
-          label="Days"
-          value={config.labels.days}
-          onChange={(v) => handleLabelChange("days", v)}
-          autoComplete="off"
-        />
-        <TextField
-          label="Hours"
-          value={config.labels.hours}
-          onChange={(v) => handleLabelChange("hours", v)}
-          autoComplete="off"
-        />
-      </FormLayout.Group>
-      <FormLayout.Group>
-        <TextField
-          label="Minutes"
-          value={config.labels.minutes}
-          onChange={(v) => handleLabelChange("minutes", v)}
-          autoComplete="off"
-        />
-        <TextField
-          label="Seconds"
-          value={config.labels.seconds}
-          onChange={(v) => handleLabelChange("seconds", v)}
-          autoComplete="off"
-        />
-      </FormLayout.Group>
-    </FormLayout>
+      <FormLayout>
+        <FormLayout.Group>
+          <TextField label="Days" value={config.labels.days} onChange={(v) => handleLabelChange("days", v)} autoComplete="off" />
+          <TextField label="Hours" value={config.labels.hours} onChange={(v) => handleLabelChange("hours", v)} autoComplete="off" />
+        </FormLayout.Group>
+        <FormLayout.Group>
+          <TextField label="Minutes" value={config.labels.minutes} onChange={(v) => handleLabelChange("minutes", v)} autoComplete="off" />
+          <TextField label="Seconds" value={config.labels.seconds} onChange={(v) => handleLabelChange("seconds", v)} autoComplete="off" />
+        </FormLayout.Group>
+      </FormLayout>
+    </BlockStack>
   );
 
   const renderStyleTab = () => (
-    <FormLayout>
-        <Select
-            label="Banner Preset"
-            options={[
-                { label: "Select a fascinating style...", value: "" },
-                { label: "Standard (Grey)", value: "standard" },
-                { label: "Sunset Gradient", value: "gradient" },
-                { label: "Glassmorphism", value: "glass" },
-                { label: "Cyber Neon", value: "neon" },
-                { label: "Minimalist", value: "minimal" },
-            ]}
-            value={config.preset}
-            onChange={handlePresetChange}
-        />
-      <Box paddingBlockStart="200">
-        <Text variant="headingSm" as="h3">
-          Colors & Background
-        </Text>
+    <BlockStack gap="400" className="animate-fade-in-up">
+      <Box>
+        <Text as="h2" variant="headingSm">Design Presets</Text>
+        <Box paddingBlockStart="200">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+            {Object.keys(PRESETS).map(key => (
+              <div key={key} onClick={() => handlePresetChange(key)} style={{ 
+                  padding: "12px", borderRadius: "12px", 
+                  border: `2px solid ${config.preset === key ? "var(--p-color-border-interactive)" : "transparent"}`,
+                  background: "var(--p-color-bg-surface-secondary)",
+                  cursor: "pointer", textAlign: "center", transition: "all 0.2s"
+              }}>
+                <div style={{ width: "100%", height: "40px", borderRadius: "4px", marginBottom: "8px", overflow: "hidden", border: "1px solid #ddd" }}>
+                   <div style={{ width: "100%", height: "100%", background: PRESETS[key].backgroundColor, display: "flex", alignItems: "center", justifyContent: "center", color: PRESETS[key].titleColor, fontSize: "10px", fontWeight: "bold" }}>00:00</div>
+                </div>
+                <Text variant="bodyXs" fontWeight="medium">{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
+              </div>
+            ))}
+          </div>
+        </Box>
       </Box>
-      <FormLayout.Group>
-        <ColorInput
-          label="Background (or Gradient)"
-          value={config.backgroundColor}
-          onChange={(v) => handleConfigChange("backgroundColor", v)}
-        />
-        <ColorInput
-          label="Border"
-          value={config.borderColor}
-          onChange={(v) => handleConfigChange("borderColor", v)}
-        />
-      </FormLayout.Group>
-      <FormLayout.Group>
-        <ColorInput
-          label="Title Text"
-          value={config.titleColor}
-          onChange={(v) => handleConfigChange("titleColor", v)}
-        />
-        <ColorInput
-          label="Timer Digits"
-          value={config.timerColor}
-          onChange={(v) => handleConfigChange("timerColor", v)}
-        />
-      </FormLayout.Group>
 
-      <Box paddingBlockStart="400">
-        <Text variant="headingSm" as="h3">
-          Dimensions & Spacing
-        </Text>
+      <Divider />
+
+      <Box>
+        <Text as="h2" variant="headingSm">Manual Customization</Text>
+        <Box paddingBlockStart="200">
+          <FormLayout>
+            <FormLayout.Group>
+               <ColorInput label="Background" value={config.backgroundColor} onChange={(v) => handleConfigChange("backgroundColor", v)} />
+               <ColorInput label="Border" value={config.borderColor} onChange={(v) => handleConfigChange("borderColor", v)} />
+            </FormLayout.Group>
+            <FormLayout.Group>
+               <ColorInput label="Title Color" value={config.titleColor} onChange={(v) => handleConfigChange("titleColor", v)} />
+               <ColorInput label="Timer Color" value={config.timerColor} onChange={(v) => handleConfigChange("timerColor", v)} />
+            </FormLayout.Group>
+            <FormLayout.Group>
+              <Select label="Typography" options={["Inter", "Roboto", "Monospace", "Serif", "Outfit"].map(f => ({ label: f, value: f }))} value={config.typography || "Inter"} onChange={(v) => handleConfigChange("typography", v)} />
+              <RangeSlider label="Font Size" value={config.fontSize} onChange={(v) => handleConfigChange("fontSize", v)} min={12} max={32} output />
+            </FormLayout.Group>
+            <FormLayout.Group>
+              <RangeSlider label="Corner Radius" value={config.borderRadius} onChange={(v) => handleConfigChange("borderRadius", v)} min={0} max={30} output />
+              <RangeSlider label="Inner Padding" value={config.padding} onChange={(v) => handleConfigChange("padding", v)} min={0} max={50} output />
+            </FormLayout.Group>
+            <RangeSlider label="Border Width" value={config.borderSize} onChange={(v) => handleConfigChange("borderSize", v)} min={0} max={10} output />
+          </FormLayout>
+        </Box>
       </Box>
-      <RangeSlider
-        label="Border Width (px)"
-        value={config.borderSize}
-        onChange={(v) => handleConfigChange("borderSize", v)}
-        min={0}
-        max={10}
-        output
-      />
-      <RangeSlider
-        label="Corner Radius (px)"
-        value={config.borderRadius}
-        onChange={(v) => handleConfigChange("borderRadius", v)}
-        min={0}
-        max={20}
-        output
-      />
-      <RangeSlider
-        label="Inner Padding (px)"
-        value={config.padding}
-        onChange={(v) => handleConfigChange("padding", v)}
-        min={0}
-        max={50}
-        output
-      />
-      <RangeSlider
-        label="Font Size (px)"
-        value={config.fontSize}
-        onChange={(v) => handleConfigChange("fontSize", v)}
-        min={12}
-        max={32}
-        output
-      />
-    </FormLayout>
+    </BlockStack>
   );
 
-  // Parse placement config from style JSON
-  const [cssSelector, setCssSelector] = useState(config.cssSelector || "");
-  const [embedPosition, setEmbedPosition] = useState(config.embedPosition || "before"); // Default to before (like announcement bar)
-
   const renderPlacementTab = () => (
-    <BlockStack gap="600">
-      {/* --- App Block Section --- */}
+    <BlockStack gap="600" className="animate-fade-in-up">
       <Card>
         <BlockStack gap="300">
           <Text as="h3" variant="headingMd">App Block (Recommended)</Text>
-          <Text as="p" tone="subdued">
-            Use the theme editor to drag and drop the Timer. For a banner effect, place it at the very top of the product page or in the Header section if supported.
-          </Text>
-          <Button
-            fullWidth
-            url="https://admin.shopify.com/themes/current/editor?context=apps"
-            external
-            target="_top"
-          >
-            Open theme editor
-          </Button>
+          <Text as="p" tone="subdued">Use the theme editor to drag and drop the Timer.</Text>
+          <Button fullWidth url="https://admin.shopify.com/themes/current/editor?context=apps" external target="_top">Open theme editor</Button>
         </BlockStack>
       </Card>
 
-      {/* --- App Embed Section --- */}
       <Card>
         <BlockStack gap="400">
           <Text as="h3" variant="headingMd">App Embed (Advanced)</Text>
-          <Text as="p" tone="subdued">
-            Use a CSS selector to inject the banner. Common selectors: <code>body</code> (top of page), <code>header</code>, or <code>.product-form</code>.
-          </Text>
-
-          <Button
-            url="https://admin.shopify.com/themes/current/editor?context=apps&activateAppId=timer-theme-extension"
-            external
-            target="_top"
-          >
-            Activate App Embed
-          </Button>
-
-          <BlockStack gap="300">
-            <TextField
-              label="CSS Selector"
-              labelHidden
-              placeholder=".header-wrapper"
-              value={cssSelector}
-              onChange={(val) => {
-                setCssSelector(val);
-                handleConfigChange("cssSelector", val);
-              }}
-              autoComplete="off"
-              monospaced
-              helpText="Leave blank to rely on App Block."
-            />
-          </BlockStack>
-
+          <Button url="https://admin.shopify.com/themes/current/editor?context=apps&activateAppId=timer-theme-extension" external target="_top">Activate App Embed</Button>
+          <TextField label="CSS Selector" placeholder=".header-wrapper" value={config.cssSelector || ""} onChange={(v) => handleConfigChange("cssSelector", v)} autoComplete="off" monospaced />
           <Select
             label="Position"
             options={[
@@ -409,11 +293,8 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
               { label: "Inside (First child)", value: "first_child" },
               { label: "Inside (Last child)", value: "last_child" },
             ]}
-            value={embedPosition}
-            onChange={(val) => {
-              setEmbedPosition(val);
-              handleConfigChange("embedPosition", val);
-            }}
+            value={config.embedPosition || "before"}
+            onChange={(v) => handleConfigChange("embedPosition", v)}
           />
         </BlockStack>
       </Card>
@@ -422,12 +303,12 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
 
   return (
     <BlockStack gap="500">
-      <InlineStack gap="400" align="start" blockAlign="start">
+      <InlineStack gap="400" align="start" blockAlign="start" wrap={false}>
         {/* --- Left Column: Configuration --- */}
-        <div style={{ flex: 1, minWidth: "300px" }}>
+        <div style={{ flex: 1 }}>
           <Card padding="0">
             <Tabs tabs={tabs} selected={selectedTab} onSelect={setSelectedTab}>
-              <Box padding="500" minHeight="400px">
+              <Box padding="500">
                 {selectedTab === 0 && renderContentTab()}
                 {selectedTab === 1 && renderStyleTab()}
                 {selectedTab === 2 && renderPlacementTab()}
@@ -437,65 +318,37 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
         </div>
 
         {/* --- Right Column: Preview --- */}
-        <div style={{ width: "100%", maxWidth: "600px", flexShrink: 0 }}>
+        <div style={{ width: "100%", maxWidth: "450px", position: "sticky", top: "20px" }}>
           <BlockStack gap="400">
             <Card title="Live Banner Preview">
-              <Box padding="800" background="bg-surface-secondary">
-                 <div style={{ padding: "20px 0" }}>
-                  {/* THE TIMER BANNER COMPONENT PREVIEW */}
+              <BlockStack gap="400">
+                <Text variant="headingSm">Live Preview</Text>
+                <div style={{ padding: "10px 0" }}>
                   <div
                     style={{
-                      background: config.backgroundColor, // Supports gradients
-                      border: `${config.borderSize}px solid ${config.borderColor}`,
+                      background: config.backgroundColor,
+                      border: `solid ${config.borderSize}px ${config.borderColor}`,
                       borderRadius: `${config.borderRadius}px`,
                       padding: `${config.padding}px`,
-                      textAlign: "left",
                       color: config.titleColor,
-                      boxShadow: config.className?.includes('neon') ? "0 0 10px rgba(255,255,255,0.5)" : "0 4px 12px rgba(0,0,0,0.1)",
+                      fontFamily: config.typography || "Inter",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
                       display: "flex",
-                      flexDirection: "row", // Banner style
                       justifyContent: "space-between",
                       alignItems: "center",
                       gap: "16px",
                       width: "100%",
                       boxSizing: "border-box",
-                      backdropFilter: config.className?.includes('glass') ? "blur(10px)" : "none",
+                      transition: "all 0.3s ease",
+                      backdropFilter: config.preset === "glass" ? "blur(10px)" : "none",
                     }}
                   >
                     <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-                        {config.title && (
-                        <div
-                            style={{
-                            fontSize: `${config.fontSize}px`,
-                            fontWeight: "bold",
-                            color: config.titleColor,
-                            fontFamily: "inherit",
-                            marginBottom: "2px",
-                            }}
-                        >
-                            {config.title}
-                        </div>
-                        )}
-                        {config.subtitle && (
-                        <div
-                            style={{
-                            fontSize: `${Math.max(10, config.fontSize * 0.75)}px`,
-                            color: config.subtitleColor,
-                            }}
-                        >
-                            {config.subtitle}
-                        </div>
-                        )}
+                        <Text variant="bodyMd" fontWeight="bold" tone="inherit">{config.title || "Flash Sale!"}</Text>
+                        <Text variant="bodyXs" tone="inherit" style={{ opacity: 0.8 }}>{config.subtitle}</Text>
                     </div>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "12px",
-                        color: config.timerColor,
-                        alignItems: "center",
-                      }}
-                    >
+                    <InlineStack gap="200" blockAlign="center">
                       {[
                         { val: timeLeft.d, label: config.labels.days },
                         { val: timeLeft.h, label: config.labels.hours },
@@ -503,34 +356,14 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
                         { val: timeLeft.s, label: config.labels.seconds },
                       ].map((item, i) => (
                         <div key={i} style={{ textAlign: "center", minWidth: "30px" }}>
-                          <div
-                            style={{
-                              fontSize: `${config.fontSize * 1.5}px`,
-                              fontWeight: "800",
-                              lineHeight: 1,
-                              fontVariantNumeric: "tabular-nums",
-                              fontFamily: "monospace",
-                            }}
-                          >
-                            {item.val}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: "9px",
-                              textTransform: "uppercase",
-                              marginTop: "2px",
-                              opacity: 0.8,
-                              letterSpacing: "0.5px",
-                            }}
-                          >
-                            {item.label}
-                          </div>
+                          <div style={{ fontSize: `${config.fontSize}px`, fontWeight: "800", color: config.timerColor, fontFamily: "monospace" }}>{item.val}</div>
+                          <div style={{ fontSize: "9px", textTransform: "uppercase", opacity: 0.7 }}>{item.label}</div>
                         </div>
                       ))}
-                    </div>
+                    </InlineStack>
                   </div>
                 </div>
-              </Box>
+              </BlockStack>
             </Card>
             <Button
               variant="primary"

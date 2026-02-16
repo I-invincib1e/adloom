@@ -19,6 +19,9 @@ import {
   Banner,
   Thumbnail,
   Tag,
+  Tabs,
+  RangeSlider,
+  FormLayout,
 } from "@shopify/polaris";
 
 export async function loader({ request }) {
@@ -75,6 +78,7 @@ export default function NewCouponPage() {
   const { allowed } = useLoaderData();
   const isLoading = navigation.state === "submitting";
 
+  const [selectedTab, setSelectedTab] = useState(0);
   const [offerTitle, setOfferTitle] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [description, setDescription] = useState("");
@@ -82,22 +86,117 @@ export default function NewCouponPage() {
   const [startTime, setStartTime] = useState("00:00");
   const [endDate, setEndDate] = useState("");
   const [endTime, setEndTime] = useState("23:59");
-  const [style, setStyle] = useState("standard");
+  
+  // Applies To State
+  const [appliesToType, setAppliesToType] = useState("products"); // products, collections, tags, vendors, all
   const [selectedProducts, setSelectedProducts] = useState([]);
+  const [selectedCollections, setSelectedCollections] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedVendors, setSelectedVendors] = useState([]);
+  const [tagInput, setTagInput] = useState("");
+  const [vendorInput, setVendorInput] = useState("");
+
+  // Styling State
+  const [stylePreset, setStylePreset] = useState("standard");
+  const [styleConfig, setStyleConfig] = useState({
+    backgroundColor: "#ffffff",
+    borderColor: "#e1e3e5",
+    textColor: "#202223",
+    codeColor: "#111111",
+    borderRadius: 8,
+    fontSize: 14,
+    typography: "Inter",
+    borderStyle: "solid",
+    showIcon: true,
+  });
+
+  const tabs = [
+    { id: "coupon", content: "Coupon Details" },
+    { id: "style", content: "Visual Style" },
+  ];
+
+  const PRESETS = {
+    standard: {
+      backgroundColor: "#ffffff",
+      borderColor: "#e1e3e5",
+      textColor: "#202223",
+      codeColor: "#111111",
+      borderRadius: 8,
+      borderStyle: "solid",
+      className: "",
+    },
+    neon: {
+      backgroundColor: "#000000",
+      borderColor: "#00ffff",
+      textColor: "#00ffff",
+      codeColor: "#ffffff",
+      borderRadius: 4,
+      borderStyle: "solid",
+      className: "coupon-neon",
+    },
+    gold: {
+      backgroundColor: "linear-gradient(135deg, #bf953f, #fcf6ba, #b38728)",
+      borderColor: "#aa771c",
+      textColor: "#3e2b00",
+      codeColor: "#ffffff",
+      borderRadius: 12,
+      borderStyle: "solid",
+      className: "coupon-gold",
+    },
+    glass: {
+      backgroundColor: "rgba(255, 255, 255, 0.15)",
+      borderColor: "rgba(255, 255, 255, 0.3)",
+      textColor: "#000000",
+      codeColor: "#000000",
+      borderRadius: 16,
+      borderStyle: "solid",
+      className: "coupon-glass",
+    },
+    minimal: {
+      backgroundColor: "#ffffff",
+      borderColor: "#111111",
+      textColor: "#111111",
+      codeColor: "#111111",
+      borderRadius: 0,
+      borderStyle: "solid",
+      className: "coupon-minimal-luxe",
+    },
+    ticket: {
+      backgroundColor: "#ffffff",
+      borderColor: "#e1e3e5",
+      textColor: "#202223",
+      codeColor: "#111111",
+      borderRadius: 4,
+      borderStyle: "dashed",
+      className: "ticket-stub",
+    }
+  };
+
+  const handlePresetChange = (presetKey) => {
+    setStylePreset(presetKey);
+    const p = PRESETS[presetKey];
+    setStyleConfig(prev => ({ ...prev, ...p }));
+  };
 
   const selectProducts = async () => {
-    const response = await shopify.resourcePicker({
-      type: "product",
-      multiple: true,
-    });
-
+    const response = await shopify.resourcePicker({ type: "product", multiple: true });
     if (response) {
-      const products = response.map((product) => ({
-        productId: product.id,
-        productTitle: product.title,
-        image: product.images[0]?.originalSrc || null,
-      }));
-      setSelectedProducts(products);
+      setSelectedProducts(response.map(p => ({
+        productId: p.id,
+        productTitle: p.title,
+        image: p.images[0]?.originalSrc || null,
+      })));
+    }
+  };
+
+  const selectCollections = async () => {
+    const response = await shopify.resourcePicker({ type: "collection", multiple: true });
+    if (response) {
+      setSelectedCollections(response.map(c => ({
+        id: c.id,
+        title: c.title,
+        image: c.image?.originalSrc || null,
+      })));
     }
   };
 
@@ -111,261 +210,362 @@ export default function NewCouponPage() {
     formData.append("description", description);
     formData.append("startTime", startDateTime);
     formData.append("endTime", endDateTime);
-    formData.append("style", style);
-    formData.append("products", JSON.stringify(selectedProducts));
+    
+    const appliesTo = {
+      type: appliesToType,
+      products: selectedProducts,
+      collections: selectedCollections,
+      tags: selectedTags,
+      vendors: selectedVendors,
+    };
+
+    const finalStyle = {
+      ...styleConfig,
+      preset: stylePreset,
+      selection: appliesTo,
+    };
+    formData.append("style", JSON.stringify(finalStyle));
+    formData.append("products", JSON.stringify(appliesTo)); // Keep for DB creation logic
 
     submit(formData, { method: "post" });
   };
 
+  const PremiumToggle = ({ options, value, onChange }) => (
+    <div className="toggle-container">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          className={`toggle-btn ${value === opt.value ? "active" : ""}`}
+          onClick={() => onChange(opt.value)}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const ColorInput = ({ label, value, onChange }) => (
+    <div style={{ flex: 1 }}>
+      <TextField
+        label={label}
+        value={value}
+        onChange={onChange}
+        autoComplete="off"
+        prefix={
+          <div style={{ position: "relative", width: 24, height: 24 }}>
+             <div style={{ position: "absolute", inset: 0, background: value, borderRadius: 4, border: "1px solid #ddd" }} />
+             <input
+                type="color"
+                value={value?.includes('gradient') ? "#ffffff" : value}
+                onChange={(e) => onChange(e.target.value)}
+                style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%" }}
+             />
+          </div>
+        }
+      />
+    </div>
+  );
+
+  const renderCouponTab = () => (
+    <BlockStack gap="400" className="animate-fade-in-up stagger-1">
+      <Card>
+        <BlockStack gap="400">
+          <Text as="h2" variant="headingSm">Offer Details</Text>
+          <TextField
+              label="Offer title"
+              value={offerTitle}
+              onChange={setOfferTitle}
+              autoComplete="off"
+              placeholder="e.g. Buy 1 Get 1 Free"
+              error={actionData?.errors?.offerTitle}
+          />
+          <TextField
+              label="Coupon code"
+              value={couponCode}
+              onChange={setCouponCode}
+              autoComplete="off"
+              placeholder="e.g. BYG1"
+              error={actionData?.errors?.couponCode}
+              monospaced
+          />
+          <TextField
+              label="Description (optional)"
+              value={description}
+              onChange={setDescription}
+              autoComplete="off"
+              multiline={2}
+          />
+        </BlockStack>
+      </Card>
+
+      <Card>
+        <BlockStack gap="400">
+          <Text as="h2" variant="headingSm">Schedule</Text>
+          <FormLayout>
+            <FormLayout.Group>
+               <TextField label="Start date" type="date" value={startDate} onChange={setStartDate} autoComplete="off" />
+               <TextField label="Start time" type="time" value={startTime} onChange={setStartTime} autoComplete="off" />
+            </FormLayout.Group>
+            <FormLayout.Group>
+               <TextField label="End date" type="date" value={endDate} onChange={setEndDate} autoComplete="off" />
+               <TextField label="End time" type="time" value={endTime} onChange={setEndTime} autoComplete="off" />
+            </FormLayout.Group>
+          </FormLayout>
+        </BlockStack>
+      </Card>
+
+      <Card>
+        <BlockStack gap="400">
+          <Text as="h2" variant="headingSm">Applies To</Text>
+          <PremiumToggle
+            value={appliesToType}
+            onChange={setAppliesToType}
+            options={[
+              { label: "Products", value: "products" },
+              { label: "Collections", value: "collections" },
+              { label: "Tags", value: "tags" },
+              { label: "Vendors", value: "vendors" },
+              { label: "Whole Store", value: "all" },
+            ]}
+          />
+          
+          <Box paddingBlockStart="200">
+            {appliesToType === "products" && (
+              <BlockStack gap="300">
+                <Button onClick={selectProducts}>Browse Products</Button>
+                <ResourceScrollArea items={selectedProducts} onRemove={(id) => setSelectedProducts(prev => prev.filter(p => p.productId !== id))} idKey="productId" titleKey="productTitle" />
+              </BlockStack>
+            )}
+            {appliesToType === "collections" && (
+              <BlockStack gap="300">
+                <Button onClick={selectCollections}>Browse Collections</Button>
+                <ResourceScrollArea items={selectedCollections} onRemove={(id) => setSelectedCollections(prev => prev.filter(c => c.id !== id))} idKey="id" titleKey="title" />
+              </BlockStack>
+            )}
+            {appliesToType === "tags" && (
+              <BlockStack gap="300">
+                <TextField
+                  label="Enter Tags"
+                  placeholder="sale, hot, winter"
+                  value={tagInput}
+                  onChange={setTagInput}
+                  connectedRight={<Button variant="primary" onClick={() => { if(tagInput) { setSelectedTags(prev => [...new Set([...prev, ...tagInput.split(',').map(t => t.trim())])]); setTagInput(""); } }}>Add</Button>}
+                  autoComplete="off"
+                />
+                <InlineStack gap="200">
+                  {selectedTags.map(tag => <Tag key={tag} onRemove={() => setSelectedTags(prev => prev.filter(t => t !== tag))}>{tag}</Tag>)}
+                </InlineStack>
+              </BlockStack>
+            )}
+            {appliesToType === "vendors" && (
+              <BlockStack gap="300">
+                 <TextField
+                  label="Enter Vendors"
+                  placeholder="Apple, Nike"
+                  value={vendorInput}
+                  onChange={setVendorInput}
+                  connectedRight={<Button variant="primary" onClick={() => { if(vendorInput) { setSelectedVendors(prev => [...new Set([...prev, ...vendorInput.split(',').map(v => v.trim())])]); setVendorInput(""); } }}>Add</Button>}
+                  autoComplete="off"
+                />
+                <InlineStack gap="200">
+                  {selectedVendors.map(v => <Tag key={v} onRemove={() => setSelectedVendors(prev => prev.filter(t => t !== v))}>{v}</Tag>)}
+                </InlineStack>
+              </BlockStack>
+            )}
+            {appliesToType === "all" && <Banner tone="info">This coupon will be shown on all product pages.</Banner>}
+          </Box>
+        </BlockStack>
+      </Card>
+    </BlockStack>
+  );
+
+  const renderStyleTab = () => (
+     <BlockStack gap="400" className="animate-fade-in-up">
+        <Card>
+          <BlockStack gap="400">
+            <Text as="h2" variant="headingSm">Design Presets</Text>
+            <Box paddingBlockStart="200">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+                {Object.keys(PRESETS).map(key => (
+                  <div 
+                    key={key} 
+                    onClick={() => handlePresetChange(key)}
+                    style={{ 
+                      padding: "12px", 
+                      borderRadius: "12px", 
+                      border: `2px solid ${stylePreset === key ? "var(--p-color-border-interactive)" : "transparent"}`,
+                      background: "var(--p-color-bg-surface-secondary)",
+                      cursor: "pointer",
+                      textAlign: "center",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    <div style={{ width: "100%", height: "40px", borderRadius: "4px", marginBottom: "8px", overflow: "hidden", border: "1px solid #ddd" }}>
+                       <div style={{ 
+                         width: "100%", height: "100%", 
+                         background: PRESETS[key].backgroundColor,
+                         display: "flex", alignItems: "center", justifyContent: "center",
+                         color: PRESETS[key].textColor,
+                         fontSize: "10px", fontWeight: "bold"
+                       }}>ABC10</div>
+                    </div>
+                    <Text variant="bodyXs" fontWeight="medium">{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
+                  </div>
+                ))}
+              </div>
+            </Box>
+          </BlockStack>
+        </Card>
+
+        <Card>
+          <BlockStack gap="400">
+            <Text as="h2" variant="headingSm">Manual Customization</Text>
+            <FormLayout>
+              <FormLayout.Group>
+                 <ColorInput label="Background" value={styleConfig.backgroundColor} onChange={(v) => setStyleConfig(s => ({ ...s, backgroundColor: v }))} />
+                 <ColorInput label="Border" value={styleConfig.borderColor} onChange={(v) => setStyleConfig(s => ({ ...s, borderColor: v }))} />
+              </FormLayout.Group>
+              <FormLayout.Group>
+                 <ColorInput label="Text Color" value={styleConfig.textColor} onChange={(v) => setStyleConfig(s => ({ ...s, textColor: v }))} />
+                 <ColorInput label="Code Color" value={styleConfig.codeColor} onChange={(v) => setStyleConfig(s => ({ ...s, codeColor: v }))} />
+              </FormLayout.Group>
+              <FormLayout.Group>
+                <Select
+                  label="Typography"
+                  options={["Inter", "Roboto", "Monospace", "Serif", "Outfit"].map(f => ({ label: f, value: f }))}
+                  value={styleConfig.typography}
+                  onChange={(v) => setStyleConfig(s => ({ ...s, typography: v }))}
+                />
+                <Select
+                  label="Border Style"
+                  options={[
+                    { label: "Solid", value: "solid" },
+                    { label: "Dashed", value: "dashed" },
+                    { label: "Dotted", value: "dotted" },
+                    { label: "Double", value: "double" },
+                  ]}
+                  value={styleConfig.borderStyle}
+                  onChange={(v) => setStyleConfig(s => ({ ...s, borderStyle: v }))}
+                />
+              </FormLayout.Group>
+              <RangeSlider
+                label="Corner Radius"
+                value={styleConfig.borderRadius}
+                onChange={(v) => setStyleConfig(s => ({ ...s, borderRadius: v }))}
+                min={0} max={30} output
+              />
+              <RangeSlider
+                label="Font Size"
+                value={styleConfig.fontSize}
+                onChange={(v) => setStyleConfig(s => ({ ...s, fontSize: v }))}
+                min={12} max={24} output
+              />
+            </FormLayout>
+          </BlockStack>
+        </Card>
+     </BlockStack>
+  );
+
   return (
-    <Page title="Create Coupon" backAction={{ url: "/app/coupons" }}>
-      {!allowed && (
-        <Layout>
-            <Layout.Section>
-                <Banner tone="warning" title="Limit Reached">
-                   <p>You have reached the limit of active coupons for your current plan. <Button variant="plain" url="/app/pricing">Upgrade now</Button> to create more.</p>
-                </Banner>
-            </Layout.Section>
-        </Layout>
-      )}
+    <Page title="Advanced Coupon Builder" backAction={{ url: "/app/coupons" }}>
+      {!allowed && <Banner tone="warning" title="Limit Reached" marginBottom="400">Upgrade to create more coupons.</Banner>}
+      
       <Layout>
         <Layout.Section>
-          <BlockStack gap="400">
-            {actionData?.errors && (
-              <Banner tone="critical">
-                <ul>
-                  {Object.values(actionData.errors).map((err) => (
-                    <li key={err}>{err}</li>
-                  ))}
-                </ul>
-              </Banner>
-            )}
-
-            <Card>
-              <BlockStack gap="400">
-                <Text as="h2" variant="headingSm">
-                  Offer details
-                </Text>
-                <TextField
-                  label="Offer title"
-                  value={offerTitle}
-                  onChange={setOfferTitle}
-                  autoComplete="off"
-                  placeholder="e.g. Buy 1 Get 1 Free"
-                  helpText="This message is shown to customers on the product page."
-                  error={actionData?.errors?.offerTitle}
-                />
-                <TextField
-                  label="Coupon code"
-                  value={couponCode}
-                  onChange={setCouponCode}
-                  autoComplete="off"
-                  placeholder="e.g. BYG1"
-                  helpText="Customers will copy this code at checkout. Auto-uppercased."
-                  error={actionData?.errors?.couponCode}
-                  monospaced
-                />
-                <TextField
-                  label="Description (optional)"
-                  value={description}
-                  onChange={setDescription}
-                  autoComplete="off"
-                  placeholder="Additional details about this offer"
-                  multiline={2}
-                />
-              </BlockStack>
-            </Card>
-
-            <Card>
-              <BlockStack gap="400">
-                <Text as="h2" variant="headingSm">
-                  Schedule
-                </Text>
-                <InlineStack gap="400">
-                  <div style={{ flex: 1 }}>
-                    <TextField
-                      label="Start date"
-                      type="date"
-                      value={startDate}
-                      onChange={setStartDate}
-                      autoComplete="off"
-                      error={actionData?.errors?.startTime}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <TextField
-                      label="Start time"
-                      type="time"
-                      value={startTime}
-                      onChange={setStartTime}
-                      autoComplete="off"
-                    />
-                  </div>
-                </InlineStack>
-                <InlineStack gap="400">
-                  <div style={{ flex: 1 }}>
-                    <TextField
-                      label="End date"
-                      type="date"
-                      value={endDate}
-                      onChange={setEndDate}
-                      autoComplete="off"
-                      error={actionData?.errors?.endTime}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <TextField
-                      label="End time"
-                      type="time"
-                      value={endTime}
-                      onChange={setEndTime}
-                      autoComplete="off"
-                    />
-                  </div>
-                </InlineStack>
-              </BlockStack>
-            </Card>
-
-            <Card>
-              <BlockStack gap="400">
-                <Text as="h2" variant="headingSm">
-                  Appearance
-                </Text>
-                <Select
-                  label="Coupon Style"
-                  options={[
-                    { label: "Standard (Solid)", value: "standard" },
-                    { label: "Dotted Border", value: "dotted" },
-                    { label: "Ticket Stub", value: "ticket" },
-                    { label: "Minimal (Text only)", value: "minimal" },
-                  ]}
-                  value={style}
-                  onChange={setStyle}
-                />
-              </BlockStack>
-            </Card>
-
-            <Card>
-              <BlockStack gap="400">
-                <Text as="h2" variant="headingSm">
-                  Products
-                </Text>
-                <Text as="p" tone="subdued">
-                  Select which products this coupon should be displayed on.
-                </Text>
-                <Button onClick={selectProducts}>Browse products</Button>
-
-                {selectedProducts.length > 0 && (
-                  <BlockStack gap="200">
-                    <Box
-                      padding="200"
-                      background="bg-surface-secondary"
-                      borderRadius="200"
-                    >
-                      <InlineStack align="space-between">
-                        <Text variant="bodySm" fontWeight="semibold">
-                          {selectedProducts.length} products selected
-                        </Text>
-                        <Button
-                          variant="plain"
-                          onClick={() => setSelectedProducts([])}
-                        >
-                          Remove all
-                        </Button>
-                      </InlineStack>
-                    </Box>
-                    {selectedProducts.map((p, idx) => (
-                      <Box
-                        key={p.productId || idx}
-                        padding="200"
-                        background="bg-surface-secondary"
-                        borderRadius="200"
-                      >
-                        <InlineStack
-                          gap="300"
-                          blockAlign="center"
-                          wrap={false}
-                        >
-                          <Thumbnail
-                            source={
-                              p.image ||
-                              "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-product-1_small.png"
-                            }
-                            alt={p.productTitle}
-                            size="small"
-                          />
-                          <Text as="span" fontWeight="semibold" variant="bodySm">
-                            {p.productTitle}
-                          </Text>
-                        </InlineStack>
-                      </Box>
-                    ))}
-                  </BlockStack>
-                )}
-              </BlockStack>
-            </Card>
-          </BlockStack>
+          <Card padding="0">
+            <Tabs tabs={tabs} selected={selectedTab} onSelect={setSelectedTab}>
+              <Box padding="500">
+                {selectedTab === 0 ? renderCouponTab() : renderStyleTab()}
+              </Box>
+            </Tabs>
+          </Card>
         </Layout.Section>
 
         <Layout.Section variant="oneThird">
-          <Card>
-            <BlockStack gap="300">
-              <Text as="h2" variant="headingSm">
-                Preview
-              </Text>
-              <Box
-                padding="400"
-                background="bg-surface-secondary"
-                borderRadius="200"
-              >
-                <BlockStack gap="200">
-                  <InlineStack align="space-between" blockAlign="center">
-                    <BlockStack gap="100">
-                      <Text as="span" fontWeight="bold" variant="bodySm">
-                        🎁 {offerTitle || "Your offer title"}
-                      </Text>
-                      {description && (
-                        <Text as="span" variant="bodySm" tone="subdued">
-                          {description}
-                        </Text>
-                      )}
-                    </BlockStack>
-                    <InlineStack gap="200">
-                      <div
-                        style={{
-                          background: "#f3f3f3",
-                          padding: "4px 10px",
-                          borderRadius: "4px",
-                          fontFamily: "monospace",
-                          fontSize: "13px",
-                          fontWeight: "bold",
-                          letterSpacing: "1px",
-                        }}
-                      >
-                        {couponCode || "CODE"}
-                      </div>
-                      <Button size="micro">Copy</Button>
-                    </InlineStack>
-                  </InlineStack>
-                </BlockStack>
-              </Box>
-            </BlockStack>
-          </Card>
+          <BlockStack gap="400">
+            <Card title="Live Preview" className="elite-card">
+              <BlockStack gap="400">
+                <Text variant="headingSm">Live Preview</Text>
+                <div style={{ padding: "10px 0" }}>
+                   <div 
+                    className={`${PRESETS[stylePreset]?.className || ""}`}
+                    style={{
+                      background: styleConfig.backgroundColor,
+                      border: `${styleConfig.borderStyle} 1px ${styleConfig.borderColor}`,
+                      borderRadius: `${styleConfig.borderRadius}px`,
+                      padding: "16px",
+                      color: styleConfig.textColor,
+                      fontFamily: styleConfig.typography,
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+                      position: "relative",
+                      transition: "all 0.3s ease"
+                    }}
+                   >
+                     <InlineStack align="space-between" blockAlign="center" wrap={false}>
+                        <BlockStack gap="100">
+                          <Text variant="bodyMd" fontWeight="bold" tone="inherit">
+                            🎁 {offerTitle || "Your Offer Title"}
+                          </Text>
+                          <Text variant="bodyXs" tone="inherit" style={{ opacity: 0.8 }}>
+                            {description || "Add a description..."}
+                          </Text>
+                        </BlockStack>
 
-          <div style={{ marginTop: "16px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                           <div style={{
+                             background: styleConfig.codeColor,
+                             color: styleConfig.backgroundColor?.includes('white') || styleConfig.backgroundColor === '#ffffff' ? '#ffffff' : styleConfig.backgroundColor,
+                             padding: "4px 10px",
+                             borderRadius: "4px",
+                             fontWeight: "800",
+                             fontFamily: "monospace",
+                             fontSize: `${styleConfig.fontSize}px`,
+                             letterSpacing: "1px",
+                             boxShadow: "inset 0 1px 3px rgba(0,0,0,0.2)"
+                           }}>
+                             {couponCode || "GIFT10"}
+                           </div>
+                        </div>
+                     </InlineStack>
+                   </div>
+                </div>
+              </BlockStack>
+            </Card>
+
             <Button
               variant="primary"
               size="large"
+              fullWidth
               onClick={handleSubmit}
               loading={isLoading}
-              fullWidth
               disabled={!allowed}
             >
               Create Coupon
             </Button>
-          </div>
+          </BlockStack>
         </Layout.Section>
       </Layout>
     </Page>
+  );
+}
+
+function ResourceScrollArea({ items, onRemove, idKey, titleKey }) {
+  if (items.length === 0) return null;
+  return (
+    <Box padding="200" background="bg-surface-secondary" borderRadius="300" maxHeight="200px" style={{ overflowY: "auto" }}>
+      <BlockStack gap="200">
+        {items.map(item => (
+          <Box key={item[idKey]} padding="200" background="bg-surface" borderRadius="200" border="1px solid #eee">
+            <InlineStack align="space-between" blockAlign="center">
+              <InlineStack gap="200" blockAlign="center">
+                {item.image && <Thumbnail source={item.image} size="small" />}
+                <Text variant="bodySm" fontWeight="medium">{item[titleKey]}</Text>
+              </InlineStack>
+              <Button size="micro" variant="plain" tone="critical" onClick={() => onRemove(item[idKey])}>Remove</Button>
+            </InlineStack>
+          </Box>
+        ))}
+      </BlockStack>
+    </Box>
   );
 }

@@ -7,6 +7,44 @@
 }
 
 /* --- Single Coupon Card --- */
+/* Presets */
+.coupon-neon {
+  background: #000 !important;
+  border: 2px solid #0ff !important;
+  box-shadow: 0 0 15px #0ff, inset 0 0 5px #0ff !important;
+  color: #0ff !important;
+}
+.coupon-gold {
+  background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c) !important;
+  border: 1px solid #aa771c !important;
+  color: #3e2b00 !important;
+  box-shadow: 0 4px 15px rgba(187, 143, 44, 0.3) !important;
+}
+.coupon-glass {
+  background: rgba(255, 255, 255, 0.15) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07) !important;
+  color: #000 !important;
+}
+.coupon-minimal-luxe {
+  background: #fff !important;
+  border: 1px solid #111 !important;
+  letter-spacing: 2px !important;
+  text-transform: uppercase !important;
+  color: #111 !important;
+}
+.ticket-stub {
+  position: relative;
+  overflow: visible !important;
+}
+.ticket-stub::before, .ticket-stub::after {
+  content: ""; position: absolute; left: -10px; width: 20px; height: 20px;
+  background: #fff; border-radius: 50%; top: 50%; transform: translateY(-50%); z-index: 2;
+}
+.ticket-stub::after { left: auto; right: -10px; }
+
 .rockit-coupon-card {
   display: flex;
   align-items: center;
@@ -89,14 +127,15 @@
 }
 
 .rockit-coupon-code {
-  font-weight: bold;
   font-family: monospace;
-  font-size: 1.1em;
-  padding: 2px 6px;
-  background: rgba(0,0,0,0.05);
+  font-weight: bold;
+  font-size: 13px;
+  padding: 4px 8px;
+  background: #f4f6f8;
   border-radius: 4px;
-  -webkit-user-select: all; /* Safari */
+  -webkit-user-select: all;
   user-select: all;
+  transition: filter 0.2s ease;
   cursor: pointer;
 }
 

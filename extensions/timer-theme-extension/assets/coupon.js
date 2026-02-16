@@ -8,10 +8,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!container) return;
 
   const productId = container.dataset.productId;
+  const tags = container.dataset.tags || "";
+  const vendor = container.dataset.vendor || "";
   if (!productId) return;
 
   try {
-    const res = await fetch(`/apps/timer?type=coupons&productId=${productId}`);
+    const res = await fetch(`/apps/timer?type=coupons&productId=${productId}&tags=${encodeURIComponent(tags)}&vendor=${encodeURIComponent(vendor)}`);
     if (!res.ok) return;
 
     const data = await res.json();
@@ -66,16 +68,41 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function renderCouponCard(coupon, index) {
   const desc = coupon.description ? `<div class="rockit-coupon-desc">${escapeHtml(coupon.description)}</div>` : "";
-  const styleClass = coupon.style ? `rockit-coupon-${coupon.style}` : "rockit-coupon-standard";
+  
+  let styleObj = {};
+  let presetClass = "rockit-coupon-standard";
+  let customStyles = "";
+
+  try {
+    if (coupon.style && coupon.style.startsWith('{')) {
+      styleObj = JSON.parse(coupon.style);
+      if (styleObj.preset) {
+        presetClass = `coupon-${styleObj.preset}`;
+      }
+      customStyles = `
+        background: ${styleObj.backgroundColor || ""};
+        border: ${styleObj.borderStyle || "solid"} 1px ${styleObj.borderColor || ""};
+        border-radius: ${styleObj.borderRadius || 8}px;
+        color: ${styleObj.textColor || ""};
+        font-family: ${styleObj.typography || "inherit"};
+      `;
+    } else if (coupon.style) {
+      presetClass = `coupon-${coupon.style}`;
+    }
+  } catch (e) {
+    console.error("Style parse error", e);
+  }
+
+  const codeAreaStyle = styleObj.codeColor ? `background: ${styleObj.codeColor}; color: ${styleObj.backgroundColor || "#fff"}; font-size: ${styleObj.fontSize || 13}px;` : "";
   
   return `
-    <div class="rockit-coupon-card ${styleClass}" data-index="${index}">
+    <div class="rockit-coupon-card ${presetClass}" data-index="${index}" style="${customStyles}">
       <div class="rockit-coupon-info">
-        <div class="rockit-coupon-offer">🎁 ${escapeHtml(coupon.offerTitle)}</div>
+        <div class="rockit-coupon-offer" style="color: inherit;">🎁 ${escapeHtml(coupon.offerTitle)}</div>
         ${desc}
       </div>
       <div class="rockit-coupon-code-area">
-        <span class="rockit-coupon-code hidden-code" data-code="${escapeHtml(coupon.couponCode)}">${escapeHtml(coupon.couponCode)}</span>
+        <span class="rockit-coupon-code hidden-code" style="${codeAreaStyle}" data-code="${escapeHtml(coupon.couponCode)}">${escapeHtml(coupon.couponCode)}</span>
         <button class="rockit-btn rockit-btn-show" data-action="toggle">Show</button>
         <button class="rockit-btn rockit-btn-copy" data-action="copy" data-code="${escapeHtml(coupon.couponCode)}">Copy</button>
       </div>
