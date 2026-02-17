@@ -3,8 +3,8 @@ import prisma from "../db.server";
 
 export const PLAN_LIMITS = {
   Free: { sales: 1, coupons: 2, timers: 1 },
-  Basic: { sales: 5, coupons: 5, timers: 5 },
-  Growth: { sales: 20, coupons: 20, timers: 20 },
+  Basic: { sales: 10, coupons: 10, timers: 10 },
+  Growth: { sales: 50, coupons: 50, timers: 50 },
   Pro: { sales: Infinity, coupons: Infinity, timers: Infinity },
 };
 

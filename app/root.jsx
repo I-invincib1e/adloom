@@ -4,14 +4,21 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useLoaderData,
 } from "@remix-run/react";
+import { AppProvider } from "@shopify/shopify-app-remix/react";
 import premiumStyles from "./styles/premium.css?url";
 
 export const links = () => [
   { rel: "stylesheet", href: premiumStyles },
 ];
 
+export const loader = async ({ request }) => {
+  return { apiKey: process.env.SHOPIFY_API_KEY || "" };
+};
+
 export default function App() {
+  const { apiKey } = useLoaderData();
   return (
     <html>
       <head>
@@ -26,7 +33,9 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <Outlet />
+        <AppProvider isEmbeddedApp apiKey={apiKey}>
+          <Outlet />
+        </AppProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

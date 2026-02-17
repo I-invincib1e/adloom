@@ -28,8 +28,15 @@ export async function action({ request }) {
   // Reverting to dynamic isTest to be safe. 
   // If shop is active dev store, it should be true. If it's a real store on a trial, false.
   // For now, let's trust the shop domain check or defaulting to false for production readiness.
-  const isTest = shop.includes("myshopify.com") || process.env.NODE_ENV !== "production"; 
-  const returnUrl = `${url.origin}/app/pricing?celebrate=true&plan=${plan}`;
+  // Disable test charges in production (Railway), enable in dev.
+  const isTest = process.env.NODE_ENV !== "production";
+  /* 
+   * Post-Payment Redirect Fix:
+   * 1. Ensure returnUrl uses the explicit SHOPIFY_APP_URL from env to avoid mismatch.
+   * 2. The AppProvider in root.jsx will handle the session token handshake on return.
+   */
+  const appUrl = process.env.SHOPIFY_APP_URL || url.origin;
+  const returnUrl = `${appUrl}/app/pricing?celebrate=true&plan=${plan}`;
 
   console.log(`[Billing Debug] SHOPIFY_APP_URL: ${process.env.SHOPIFY_APP_URL}`);
   console.log(`[Billing Debug] Requesting plan: ${plan}, isTest: ${isTest}, returnUrl: ${returnUrl}`);
@@ -223,15 +230,17 @@ function PlanCard({ plan, currentPlan }) {
 function PlanBenefits({ planId }) {
   const benefits = {
     "Basic": [
-      "Up to 5 Active Sales",
-      "Up to 5 Active Coupons",
-      "Up to 5 Countdown Timers",
+      "Up to 10 Active Sales",
+      "Up to 10 Active Coupons",
+      "Up to 10 Countdown Timers",
       "7-day trial period",
     ],
     "Growth": [
-      "Up to 20 Active Sales",
-      "Up to 20 Active Coupons",
-      "Up to 20 Countdown Timers",
+      "Up to 50 Active Sales",
+      "Up to 50 Active Coupons",
+      "Up to 50 Countdown Timers",
+      "Custom Designs",
+      "Fast / Priority Support",
       "Most popular features included",
       "7-day trial period",
     ],
@@ -239,6 +248,8 @@ function PlanBenefits({ planId }) {
       "Unlimited Active Sales",
       "Unlimited Active Coupons",
       "Unlimited Active Timers",
+      "Custom Designs",
+      "Fast / Priority Support",
       "Priority features",
       "7-day trial period",
     ],
@@ -358,9 +369,9 @@ export default function PricingPage() {
       price: isYearly ? "$99" : "$9.99",
       period: isYearly ? "/ year" : "/ month",
       features: [
-        "5 Active Sales",
-        "5 Active Coupons",
-        "5 Countdown Timers",
+        "10 Active Sales",
+        "10 Active Coupons",
+        "10 Countdown Timers",
         "Advanced filtering",
         "Product exclusion",
         "Sale scheduling",
@@ -377,9 +388,11 @@ export default function PricingPage() {
       period: isYearly ? "/ year" : "/ month",
       badge: "Most Popular",
       features: [
-        "20 Active Sales",
-        "20 Active Coupons",
-        "20 Countdown Timers",
+        "50 Active Sales",
+        "50 Active Coupons",
+        "50 Countdown Timers",
+        "Custom Designs",
+        "Fast / Priority Support",
         "Advanced filtering",
         "Product exclusion",
         "Sale scheduling",
@@ -396,6 +409,8 @@ export default function PricingPage() {
       period: isYearly ? "/ year" : "/ month",
       features: [
         "Unlimited everything",
+        "Custom Designs",
+        "Fast / Priority Support",
         "Advanced filtering",
         "Product exclusion",
         "Sale scheduling",
