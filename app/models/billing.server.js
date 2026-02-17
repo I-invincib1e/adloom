@@ -2,10 +2,10 @@ import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 
 export const PLAN_LIMITS = {
-  Free: { variants: 50, timers: 1 },
-  Starter: { variants: 2000, timers: 5 },
-  Plus: { variants: 20000, timers: 100 },
-  Professional: { variants: Infinity, timers: Infinity },
+  Free: { sales: 1, coupons: 2, timers: 1 },
+  Basic: { sales: 5, coupons: 5, timers: 5 },
+  Growth: { sales: 20, coupons: 20, timers: 20 },
+  Pro: { sales: Infinity, coupons: Infinity, timers: Infinity },
 };
 
 export async function getPlan(request) {
@@ -30,9 +30,9 @@ export async function getPlan(request) {
     if (!activeSub) return "Free";
 
     const name = activeSub.name.toLowerCase();
-    if (name.includes("professional")) return "Professional";
-    if (name.includes("plus")) return "Plus";
-    if (name.includes("starter")) return "Starter";
+    if (name.includes("pro")) return "Pro";
+    if (name.includes("growth")) return "Growth";
+    if (name.includes("basic")) return "Basic";
     
     return "Free";
   } catch (error) {
@@ -47,31 +47,34 @@ export async function getPlanUsage(request) {
   const plan = await getPlan(request);
   const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.Free;
 
-  // Count active variants on sale
-  const activeVariants = await prisma.saleItem.count({
+  // Count active resources
+  const activeSales = await prisma.sale.count({
+    where: { shop, status: "ACTIVE" },
+  });
+
+  const activeCoupons = await prisma.coupon.count({
     where: {
-      sale: {
-        shop,
-        status: "ACTIVE",
-      },
+      shop,
+      status: "ACTIVE",
+      endTime: { gt: new Date() },
     },
   });
 
-  // Count active timers
   const activeTimers = await prisma.timer.count({
     where: { shop }
   });
 
   return {
     plan,
-    variants: { used: activeVariants, limit: limits.variants },
+    sales: { used: activeSales, limit: limits.sales },
+    coupons: { used: activeCoupons, limit: limits.coupons },
     timers: { used: activeTimers, limit: limits.timers },
   };
 }
 
 export async function checkLimit(request, feature) {
   const usage = await getPlanUsage(request);
-  const resourceUsage = usage[feature]; // feature: 'variants', 'timers'
+  const resourceUsage = usage[feature]; // feature: 'sales', 'coupons', 'timers'
 
   if (!resourceUsage) return true;
 
