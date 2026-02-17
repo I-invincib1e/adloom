@@ -39,6 +39,31 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         const config = JSON.parse(style || "{}");
 
+        // --- Placement Logic ---
+        if (config.cssSelector) {
+          const targetEl = document.querySelector(config.cssSelector);
+          if (targetEl) {
+            const position = config.embedPosition || "before";
+            switch (position) {
+              case "before":
+                targetEl.parentNode.insertBefore(container, targetEl);
+                break;
+              case "after":
+                targetEl.parentNode.insertBefore(container, targetEl.nextSibling);
+                break;
+              case "first_child":
+                targetEl.insertBefore(container, targetEl.firstChild);
+                break;
+              case "last_child":
+                targetEl.appendChild(container);
+                break;
+            }
+            container.style.display = "block"; // Ensure visibility after move
+          } else {
+             console.warn("Rockit Timer: Target element not found for selector:", config.cssSelector);
+          }
+        }
+
         // --- Apply Content ---
         // Handle gradients vs solid colors vs helper classes
         const bgStyle = (config.backgroundColor && config.backgroundColor.includes('gradient')) 
