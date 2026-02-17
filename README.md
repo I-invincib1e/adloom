@@ -244,6 +244,19 @@ Webhooks subscriptions created in the [Shopify admin](https://help.shopify.com/e
 
 Test your webhooks with the [Shopify CLI](https://shopify.dev/docs/apps/tools/cli/commands#webhook-trigger) or by triggering events manually in the Shopify admin(e.g. Updating the product title to trigger a `PRODUCTS_UPDATE`).
 
+### Webhook Compliance & Deployment
+
+If your automated checks (GDPR/HMAC) fail:
+1.  Ensure you have `[[webhooks.subscriptions]]` in your `shopify.app.loom-offer-sales.toml`.
+2.  **Deploy your config**: Simply pushing to Git isn't enough for webhook *subscriptions*. You must run:
+    ```bash
+    npm run deploy
+    # OR
+    shopify app deploy
+    ```
+    This registers the URLs with Shopify.
+
+
 ### Incorrect GraphQL Hints
 
 By default the [graphql.vscode-graphql](https://marketplace.visualstudio.com/items?itemName=GraphQL.vscode-graphql) extension for VS Code will assume that GraphQL queries or mutations are for the [Shopify Admin API](https://shopify.dev/docs/api/admin). This is a sensible default, but it may not be true if:
