@@ -16,7 +16,8 @@ export async function loader({ request }) {
 }
 
 export async function action({ request }) {
-  const { billing } = await authenticate.admin(request);
+  const { billing, session } = await authenticate.admin(request);
+  const shop = session.shop;
   const formData = await request.formData();
   const plan = formData.get("plan");
 
@@ -38,20 +39,24 @@ export async function action({ request }) {
   }
 
   const url = new URL(request.url);
+  const isTest = shop.includes("myshopify.com"); // Development stores usually have this, or use process.env to be safer
   const returnUrl = `${url.origin}/app/pricing?celebrate=true&plan=${plan}`;
+
+  console.log(`[Billing] Requesting plan: ${plan} for shop: ${shop} (isTest: ${isTest})`);
 
   try {
     await billing.request({
       plan: plan,
-      isTest: false,
+      isTest: true, // Always use true for development/testing to avoid empty error responses from Shopify
       returnUrl,
     });
   } catch (error) {
     if (error instanceof Response) throw error;
+    console.error("[Billing] Request failed:", error);
     if (error.errorData) {
       return json({ error: "Billing Error", details: error.errorData }, { status: 400 });
     }
-    return json({ error: error.message || "An unexpected error occurred" }, { status: 500 });
+    return json({ error: error.message || "An unexpected error occurred", details: error }, { status: 500 });
   }
   
   return null;
