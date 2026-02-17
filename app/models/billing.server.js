@@ -2,10 +2,10 @@ import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 
 export const PLAN_LIMITS = {
-  Free: { sales: 1, coupons: 2, timers: 1 },
-  Basic: { sales: 5, coupons: 5, timers: 5 },
-  Growth: { sales: 20, coupons: 20, timers: 20 },
-  Pro: { sales: Infinity, coupons: Infinity, timers: Infinity },
+  Free: { variants: 50, timers: 1 },
+  Starter: { variants: 2000, timers: 5 },
+  Plus: { variants: 20000, timers: 100 },
+  Professional: { variants: Infinity, timers: Infinity },
 };
 
 export async function getPlan(request) {
@@ -18,7 +18,6 @@ export async function getPlan(request) {
           activeSubscriptions {
             name
             status
-            test
           }
         }
       }
@@ -26,17 +25,14 @@ export async function getPlan(request) {
 
     const data = await response.json();
     const subscriptions = data?.data?.appInstallation?.activeSubscriptions || [];
-    
-    // Find the first active subscription that matches our expected plan names
-    // Note: In Managed Pricing, the name is what you set in the Partner Dashboard
     const activeSub = subscriptions.find(sub => sub.status === "ACTIVE");
     
     if (!activeSub) return "Free";
 
     const name = activeSub.name.toLowerCase();
-    if (name.includes("pro")) return "Pro";
-    if (name.includes("growth")) return "Growth";
-    if (name.includes("basic")) return "Basic";
+    if (name.includes("professional")) return "Professional";
+    if (name.includes("plus")) return "Plus";
+    if (name.includes("starter")) return "Starter";
     
     return "Free";
   } catch (error) {
@@ -51,39 +47,33 @@ export async function getPlanUsage(request) {
   const plan = await getPlan(request);
   const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.Free;
 
-  // Count active resources
-  // Sales: status = ACTIVE
-  const activeSales = await prisma.sale.count({
-    where: { shop, status: "ACTIVE" },
-  });
-
-  // Coupons: status = ACTIVE and endTime > now
-  const activeCoupons = await prisma.coupon.count({
+  // Count active variants on sale
+  const activeVariants = await prisma.saleItem.count({
     where: {
-      shop,
-      status: "ACTIVE",
-      endTime: { gt: new Date() },
+      sale: {
+        shop,
+        status: "ACTIVE",
+      },
     },
   });
 
-  // Timers: just count all for now, or maybe exclude some if needed?
+  // Count active timers
   const activeTimers = await prisma.timer.count({
     where: { shop }
   });
 
   return {
     plan,
-    sales: { used: activeSales, limit: limits.sales },
-    coupons: { used: activeCoupons, limit: limits.coupons },
+    variants: { used: activeVariants, limit: limits.variants },
     timers: { used: activeTimers, limit: limits.timers },
   };
 }
 
 export async function checkLimit(request, feature) {
   const usage = await getPlanUsage(request);
-  const resourceUsage = usage[feature]; // feature: 'sales', 'coupons', 'timers'
+  const resourceUsage = usage[feature]; // feature: 'variants', 'timers'
 
-  if (!resourceUsage) return true; // Unknown feature, allow (or block safe?)
+  if (!resourceUsage) return true;
 
   if (resourceUsage.limit === Infinity) return true;
 
