@@ -20,34 +20,70 @@ const shopify = shopifyApp({
   distribution: AppDistribution.AppStore,
   billing: {
     "Basic": {
-      amount: 9.99,
-      currencyCode: "USD",
-      interval: BillingInterval.Every30Days,
+      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
+      trialDays: 7,
+      lineItems: [
+        {
+          amount: 9.99,
+          currencyCode: "USD",
+          interval: BillingInterval.Every30Days,
+        }
+      ],
     },
     "Basic Annual": {
-      amount: 99.0,
-      currencyCode: "USD",
-      interval: BillingInterval.Annual,
+      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
+      trialDays: 7,
+      lineItems: [
+        {
+          amount: 99.0,
+          currencyCode: "USD",
+          interval: BillingInterval.Annual,
+        }
+      ],
     },
     "Growth": {
-      amount: 19.99,
-      currencyCode: "USD",
-      interval: BillingInterval.Every30Days,
+      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
+      trialDays: 7,
+      lineItems: [
+        {
+          amount: 19.99,
+          currencyCode: "USD",
+          interval: BillingInterval.Every30Days,
+        }
+      ],
     },
     "Growth Annual": {
-      amount: 199.0,
-      currencyCode: "USD",
-      interval: BillingInterval.Annual,
+      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
+      trialDays: 7,
+      lineItems: [
+        {
+          amount: 199.0,
+          currencyCode: "USD",
+          interval: BillingInterval.Annual,
+        }
+      ],
     },
     "Pro": {
-      amount: 29.99,
-      currencyCode: "USD",
-      interval: BillingInterval.Every30Days,
+      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
+      trialDays: 7,
+      lineItems: [
+        {
+          amount: 29.99,
+          currencyCode: "USD",
+          interval: BillingInterval.Every30Days,
+        }
+      ],
     },
     "Pro Annual": {
-      amount: 299.0,
-      currencyCode: "USD",
-      interval: BillingInterval.Annual,
+      replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
+      trialDays: 7,
+      lineItems: [
+        {
+          amount: 299.0,
+          currencyCode: "USD",
+          interval: BillingInterval.Annual,
+        }
+      ],
     },
   },
   future: {

@@ -31,6 +31,7 @@ export async function action({ request }) {
   const isTest = shop.includes("myshopify.com") || process.env.NODE_ENV !== "production"; 
   const returnUrl = `${url.origin}/app/pricing?celebrate=true&plan=${plan}`;
 
+  console.log(`[Billing Debug] SHOPIFY_APP_URL: ${process.env.SHOPIFY_APP_URL}`);
   console.log(`[Billing Debug] Requesting plan: ${plan}, isTest: ${isTest}, returnUrl: ${returnUrl}`);
 
   try {
@@ -40,18 +41,39 @@ export async function action({ request }) {
       returnUrl,
     });
     console.log(`[Billing Debug] Request successful. Redirecting to:`, confirmation);
-    return confirmation; // billing.request returns a redirect response, we should return it!
+    return confirmation;
   } catch (error) {
     if (error instanceof Response) {
         console.log(`[Billing Debug] Caught Redirect Response (Normal Flow)`);
         throw error;
     }
+    
     console.error("[Billing Debug] Request failed with error:", error);
+    console.error("[Billing Debug] Error Name:", error.name);
+    console.error("[Billing Debug] Error Message:", error.message);
+    
+    // Log all enumerable keys to see what's hidden
+    try {
+      console.error("[Billing Debug] Error Keys:", Object.keys(error));
+      console.error("[Billing Debug] Error Stringified:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    } catch (e) {
+      console.error("[Billing Debug] Could not stringify error:", e);
+    }
+
     if (error.errorData) {
       console.error("[Billing Debug] Error Data:", JSON.stringify(error.errorData, null, 2));
       return json({ error: "Billing Error", details: error.errorData }, { status: 400 });
     }
-    return json({ error: error.message || "An unexpected error occurred", details: error.toString() }, { status: 500 });
+    
+    return json({ 
+      error: error.message || "An unexpected error occurred", 
+      details: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        keys: Object.keys(error)
+      } 
+    }, { status: 500 });
   }
   
   return null;

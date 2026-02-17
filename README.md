@@ -78,8 +78,20 @@ This template comes preconfigured with examples of:
 3. Responding to webhooks in individual files such as [/app/routes/webhooks.app.uninstalled.tsx](https://github.com/Shopify/shopify-app-template-remix/blob/main/app/routes/webhooks.app.uninstalled.tsx) and [/app/routes/webhooks.app.scopes_update.tsx](https://github.com/Shopify/shopify-app-template-remix/blob/main/app/routes/webhooks.app.scopes_update.tsx)
 
 Please read the [documentation for @shopify/shopify-app-remix](https://www.npmjs.com/package/@shopify/shopify-app-remix#authenticating-admin-requests) to understand what other API's are available.
+# Loom - Offer & Sales
 
-## Deployment
+## 🧪 Beta Testing Workflow
+We use a dedicated branch for local testing to avoid database conflicts.
+- **Branch**: `beta-testing`
+- **Database**: SQLite (Local)
+- **Command**: `npm run dev`
+
+**To switch back to Production:**
+1. `git checkout main`
+2. `npm run dev` (Connects to Railway Postgres)
+
+## 🚀 Deployment
+Pushing to `main` auto-deploys to Railway.
 
 ### Application Storage
 
