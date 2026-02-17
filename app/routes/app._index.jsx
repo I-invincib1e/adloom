@@ -89,7 +89,7 @@ export async function action({ request }) {
 }
 
 export default function Index() {
-  const { sales } = useLoaderData();
+  const { sales = [] } = useLoaderData() || {};
   const actionData = useActionData();
   const navigate = useNavigate();
   const submit = useSubmit();

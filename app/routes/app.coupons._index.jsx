@@ -1,7 +1,7 @@
 import { json } from "@remix-run/node";
 import { useLoaderData, useSubmit } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
-import { getCoupons, deleteCoupon } from "../models/coupon.server";
+import { getCoupons, getCoupon, deleteCoupon } from "../models/coupon.server";
 import {
   Page,
   Layout,

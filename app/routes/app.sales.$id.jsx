@@ -93,9 +93,9 @@ export async function loader({ request, params }) {
     const enrichedItems = sale.items.map(item => ({
         ...item,
         productTitle: productMap[item.productId]?.title || "Unknown product",
-        variantTitle: productMap[item.productId]?.variants[item.variantId]?.title || "Unknown variant",
+        variantTitle: productMap[item.productId]?.variants?.[item.variantId]?.title || "Unknown variant",
         image: productMap[item.productId]?.image || null,
-        currentPrice: productMap[item.productId]?.variants[item.variantId]?.price || null,
+        currentPrice: productMap[item.productId]?.variants?.[item.variantId]?.price || null,
     }));
 
     // Get shop domain for preview
