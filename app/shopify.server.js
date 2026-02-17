@@ -18,6 +18,14 @@ const shopify = shopifyApp({
   authPathPrefix: "/auth",
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
+  // This should be added to app/routes/webhooks.jsx or similar 
+  // but for now we register the topic here so the app knows to SUBSCRIBE to it.
+  webhooks: {
+    APP_UNINSTALLED: {
+      deliveryMethod: AppDistribution.Http,
+      callbackUrl: "/webhooks/app/uninstalled",
+    },
+  },
   billing: {
     "Basic": {
       replacementBehavior: BillingReplacementBehavior.ApplyImmediately,
