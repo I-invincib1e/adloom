@@ -21,42 +21,37 @@ export async function action({ request }) {
   const formData = await request.formData();
   const plan = formData.get("plan");
 
-  if (plan === "Free") {
-    const subscription = await billing.require({
-        plans: ["Basic", "Growth", "Pro", "Basic Annual", "Growth Annual", "Pro Annual"],
-        isTest: false,
-        onFailure: async () => null,
-    });
-    
-    if (subscription) {
-        await billing.cancel({
-            subscriptionId: subscription.id,
-            isTest: false,
-            prorate: true,
-        });
-    }
-    return json({ success: true });
-  }
+  console.log(`[Billing Debug] Action started for shop: ${shop}`);
+  console.log(`[Billing Debug] Form data plan: ${plan}`);
 
   const url = new URL(request.url);
-  const isTest = shop.includes("myshopify.com"); // Development stores usually have this, or use process.env to be safer
+  // Reverting to dynamic isTest to be safe. 
+  // If shop is active dev store, it should be true. If it's a real store on a trial, false.
+  // For now, let's trust the shop domain check or defaulting to false for production readiness.
+  const isTest = shop.includes("myshopify.com") || process.env.NODE_ENV !== "production"; 
   const returnUrl = `${url.origin}/app/pricing?celebrate=true&plan=${plan}`;
 
-  console.log(`[Billing] Requesting plan: ${plan} for shop: ${shop} (isTest: ${isTest})`);
+  console.log(`[Billing Debug] Requesting plan: ${plan}, isTest: ${isTest}, returnUrl: ${returnUrl}`);
 
   try {
-    await billing.request({
+    const confirmation = await billing.request({
       plan: plan,
-      isTest: true, // Always use true for development/testing to avoid empty error responses from Shopify
+      isTest: isTest,
       returnUrl,
     });
+    console.log(`[Billing Debug] Request successful. Redirecting to:`, confirmation);
+    return confirmation; // billing.request returns a redirect response, we should return it!
   } catch (error) {
-    if (error instanceof Response) throw error;
-    console.error("[Billing] Request failed:", error);
+    if (error instanceof Response) {
+        console.log(`[Billing Debug] Caught Redirect Response (Normal Flow)`);
+        throw error;
+    }
+    console.error("[Billing Debug] Request failed with error:", error);
     if (error.errorData) {
+      console.error("[Billing Debug] Error Data:", JSON.stringify(error.errorData, null, 2));
       return json({ error: "Billing Error", details: error.errorData }, { status: 400 });
     }
-    return json({ error: error.message || "An unexpected error occurred", details: error }, { status: 500 });
+    return json({ error: error.message || "An unexpected error occurred", details: error.toString() }, { status: 500 });
   }
   
   return null;
