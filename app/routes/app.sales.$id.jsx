@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData, useSubmit, useNavigation, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { authenticate } from "../shopify.server";

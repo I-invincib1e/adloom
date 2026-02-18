@@ -161,6 +161,8 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
       fontSize: 15,
       typography: "Outfit",
       className: "rockit-timer-bar",
+      cssSelector: "header, #shopify-section-header, .header-wrapper, .site-header",
+      embedPosition: "after",
     },
   };
 
