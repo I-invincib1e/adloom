@@ -23,9 +23,10 @@ export async function loader({ request }) {
   if (type === "coupons") {
     const tags = url.searchParams.get("tags") || "";
     const vendor = url.searchParams.get("vendor") || "";
+    const collections = url.searchParams.get("collections") || "";
     
     const { getCouponsForProduct } = await import("../models/coupon.server");
-    const coupons = await getCouponsForProduct(gid, { tags, vendor }, shop);
+    const coupons = await getCouponsForProduct(gid, { tags, vendor, collections }, shop);
 
     return json({
       coupons: coupons.map((c) => ({

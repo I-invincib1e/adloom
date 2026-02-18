@@ -125,8 +125,11 @@ export async function getCouponsForProduct(productId, productData = {}, shop) {
       return selection.vendors.some(v => v.toLowerCase() === productData.vendor.toLowerCase());
     }
 
-    // Collections would need more info or another lookup, skipping for now as a limitation
-    // but the UI supports it.
+    if (selection.type === "collections" && productData.collections) {
+      const productCollectionIds = productData.collections.split(",").map(id => id.trim());
+      // selection.collections is an array of objects {id, title, ...}
+      return selection.collections.some(c => productCollectionIds.includes(String(c.id)));
+    }
     
     return false;
   });

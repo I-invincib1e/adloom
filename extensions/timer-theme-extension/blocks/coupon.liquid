@@ -4,6 +4,7 @@
     data-product-id="{{ product.id }}" 
     data-tags="{{ product.tags | join: ',' | escape }}"
     data-vendor="{{ product.vendor | escape }}"
+    data-collections="{{ product.collections | map: 'id' | join: ',' }}"
     data-shop-domain="{{ shop.domain }}">
   </div>
   <script src="{{ 'coupon.js' | asset_url }}" defer="defer"></script>

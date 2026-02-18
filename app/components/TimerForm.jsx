@@ -57,8 +57,84 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
   const [config, setConfig] = useState(initialConfig);
   const [selectedTab, setSelectedTab] = useState(0);
 
+  const PRESETS = [
+    {
+      id: "standard",
+      label: "Standard",
+      config: {
+        backgroundColor: "#000000",
+        borderColor: "#000000",
+        titleColor: "#ffffff",
+        subtitleColor: "#cccccc",
+        timerColor: "#ffffff",
+        borderSize: 0,
+        borderRadius: 0,
+        typography: "Outfit",
+      }
+    },
+    {
+      id: "minimal",
+      label: "Minimal", 
+      config: {
+        backgroundColor: "#ffffff",
+        borderColor: "#e1e3e5",
+        titleColor: "#202223",
+        subtitleColor: "#6d7175",
+        timerColor: "#202223",
+        borderSize: 1,
+        borderRadius: 0,
+        typography: "Inter",
+      }
+    },
+    {
+      id: "urgent",
+      label: "Urgent",
+      config: {
+        backgroundColor: "#d82c0d",
+        borderColor: "#d82c0d",
+        titleColor: "#ffffff",
+        subtitleColor: "#fbeae5",
+        timerColor: "#ffffff",
+        borderSize: 0,
+        borderRadius: 0,
+        typography: "Roboto",
+      }
+    },
+    {
+      id: "midnight",
+      label: "Midnight",
+      config: {
+        backgroundColor: "#1a1a1a",
+        borderColor: "#333333",
+        titleColor: "#4adbc8",
+        subtitleColor: "#999999",
+        timerColor: "#4adbc8",
+        borderSize: 1,
+        borderRadius: 4,
+        typography: "Monospace",
+      }
+    }
+  ];
+
+  const [selectedPreset, setSelectedPreset] = useState("custom");
+
+  const handlePresetChange = (presetId) => {
+    setSelectedPreset(presetId);
+    if (presetId === "custom") return;
+
+    const preset = PRESETS.find(p => p.id === presetId);
+    if (preset) {
+      setConfig(prev => ({
+        ...prev,
+        ...preset.config
+      }));
+      if (onDirty) onDirty();
+    }
+  };
+
   const handleConfigChange = (key, value) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
+    setSelectedPreset("custom");
     if (onDirty) onDirty();
   };
 
@@ -141,10 +217,36 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
     </BlockStack>
   );
 
+
+
   const renderStyleTab = () => (
     <BlockStack gap="400" className="animate-fade-in-up">
       <Box>
-        <Text as="h2" variant="headingSm">Appearance</Text>
+        <Text as="h2" variant="headingSm">Design Presets</Text>
+        <Box paddingBlockStart="200" paddingBlockEnd="400">
+             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {PRESETS.map(preset => (
+                  <Button 
+                    key={preset.id} 
+                    onClick={() => handlePresetChange(preset.id)} 
+                    variant={selectedPreset === preset.id ? "primary" : "secondary"}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+                <Button 
+                  onClick={() => handlePresetChange("custom")} 
+                  variant={selectedPreset === "custom" ? "primary" : "secondary"}
+                >
+                  Custom
+                </Button>
+             </div>
+        </Box>
+        
+        <Divider />
+        <Box paddingBlockStart="400">
+            <Text as="h2" variant="headingSm">Appearance</Text>
+        </Box>
         <Box paddingBlockStart="200">
           <FormLayout>
              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>

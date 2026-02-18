@@ -1,7 +1,7 @@
 import { json } from "@remix-run/node";
 import { useLoaderData, useNavigate, useSubmit, useSearchParams, useNavigation, useRouteError, isRouteErrorResponse, useActionData } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
-import { getSales, revertSale, deleteSale } from "../models/sale.server";
+import { getSales, revertSale, deleteSale, applySale, hasActiveSale } from "../models/sale.server";
 import {
   Page,
   Layout,
@@ -75,6 +75,13 @@ export async function action({ request }) {
       for (const id of ids) {
         await revertSale(id, admin);
       }
+    } else if (action === "activate" && saleId) {
+      const hasActive = await hasActiveSale(session.shop);
+      if (hasActive) {
+         return json({ success: false, error: "Only one sale can be active at a time. Please deactivate the currently active sale first." }, { status: 400 });
+      }
+      const count = await applySale(saleId, admin);
+      return json({ success: true, count });
     } else if (action === "bulkDelete") {
       const ids = formData.get("ids")?.split(",") || [];
       for (const id of ids) {
@@ -297,6 +304,8 @@ export default function Index() {
       submit({ action: "revert", saleId: ids[0] }, { method: "post" });
     } else if (type === "delete") {
       submit({ action: "delete", saleId: ids[0] }, { method: "post" });
+    } else if (type === "activate") {
+      submit({ action: "activate", saleId: ids[0] }, { method: "post" });
     } else if (type === "bulkDeactivate") {
       submit({ action: "bulkDeactivate", ids: ids.join(",") }, { method: "post" });
     } else if (type === "bulkDelete") {
@@ -390,7 +399,7 @@ export default function Index() {
         <IndexTable.Cell>
           <InlineStack gap="200">
             <Button size="micro" onClick={() => navigate(`/app/sales/${id}`)}>Edit</Button>
-            {status === "ACTIVE" && (
+            {status === "ACTIVE" ? (
                 <Button
                   size="micro"
                   tone="critical"
@@ -398,6 +407,15 @@ export default function Index() {
                   onClick={() => requestConfirm("deactivate", [id], `Deactivate sale "${title}"?`)}
                 >
                     Deactivate
+                </Button>
+            ) : (
+                <Button
+                  size="micro"
+                  variant="primary"
+                  disabled={isSubmitting}
+                  onClick={() => requestConfirm("activate", [id], `Activate sale "${title}"?`)}
+                >
+                    Activate
                 </Button>
             )}
             <Button
@@ -431,7 +449,7 @@ export default function Index() {
   // Confirmation message based on action type
   const confirmTitle = confirmAction?.type?.includes("Delete") || confirmAction?.type === "delete" || confirmAction?.type === "bulkDelete"
     ? "Confirm delete"
-    : "Confirm deactivate";
+    : confirmAction?.type === "activate" ? "Confirm activate" : "Confirm deactivate";
 
   return (
     <Page
@@ -506,8 +524,8 @@ export default function Index() {
         onClose={handleCancelConfirm}
         title={confirmTitle}
         primaryAction={{
-          content: confirmAction?.type?.includes("elete") ? "Delete" : "Deactivate",
-          destructive: true,
+          content: confirmAction?.type?.includes("elete") ? "Delete" : confirmAction?.type === "activate" ? "Activate" : "Deactivate",
+          destructive: !confirmAction?.type?.includes("activate"), // Not destructive for activate
           loading: isSubmitting,
           onAction: handleConfirm,
         }}

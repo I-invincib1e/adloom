@@ -73,7 +73,29 @@ export default function CouponsPage() {
         </Text>
       </IndexTable.Cell>
       <IndexTable.Cell>
-        <Text tone="subdued">{coupon.products?.length || 0} products</Text>
+        <Text tone="subdued">
+          {(() => {
+             try {
+                const style = JSON.parse(coupon.style || "{}");
+                const selection = style.selection || {};
+                switch (selection.type) {
+                  case "collections":
+                    return `${selection.collections?.length || 0} collections`;
+                  case "tags":
+                    return `${selection.tags?.length || 0} tags`;
+                  case "vendors":
+                    return `${selection.vendors?.length || 0} vendors`;
+                  case "all":
+                    return "Entire store";
+                  case "products":
+                  default:
+                    return `${coupon.products?.length || 0} products`;
+                }
+             } catch {
+                return `${coupon.products?.length || 0} products`;
+             }
+          })()}
+        </Text>
       </IndexTable.Cell>
       <IndexTable.Cell>
         <InlineStack gap="200">

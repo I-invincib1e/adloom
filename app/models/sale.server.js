@@ -20,6 +20,16 @@ export async function getSales(shop) {
   }
 }
 
+export async function hasActiveSale(shop) {
+  const activeSale = await prisma.sale.findFirst({
+    where: {
+      shop,
+      status: "ACTIVE",
+    },
+  });
+  return !!activeSale;
+}
+
 export async function deleteSale(saleId, admin) {
   try {
     const sale = await prisma.sale.findUnique({ where: { id: saleId } });

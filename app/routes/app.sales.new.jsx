@@ -3,7 +3,7 @@ import { json, redirect } from "@remix-run/node";
 import { useActionData, useSubmit, useNavigation, useLoaderData, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { DirtyStateModal } from "../components/DirtyStateModal";
 import { authenticate } from "../shopify.server";
-import { createSale, applySale } from "../models/sale.server"; 
+import { createSale, applySale, hasActiveSale } from "../models/sale.server"; 
 import { getTimers } from "../models/timer.server";
 import { checkLimit } from "../models/billing.server";
 import {
@@ -205,6 +205,17 @@ export async function action({ request }) {
   // Deduplicate items
   const uniqueItems = Array.from(new Map(items.map(item => [item.variantId, item])).values());
 
+  // Check for existing active sale if this one is starting immediately
+  const start = new Date(startTime);
+  const now = new Date();
+  
+  if (start <= now) {
+    const hasActive = await hasActiveSale(session.shop);
+    if (hasActive) {
+       return json({ errors: { base: "Only one sale can be active at a time. Please deactivate the current sale before creating a new active one." } }, { status: 400 });
+    }
+  }
+
   const sale = await createSale({
     shop: session.shop,
     title,
@@ -224,8 +235,6 @@ export async function action({ request }) {
     tagsToRemove,
   });
 
-  const now = new Date();
-  const start = new Date(startTime);
   let updatedCount = 0;
   if (start <= now) {
     updatedCount = await applySale(sale.id, admin);

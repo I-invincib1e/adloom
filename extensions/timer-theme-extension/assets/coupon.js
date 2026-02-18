@@ -11,10 +11,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     const productId = container.dataset.productId;
     const tags = container.dataset.tags || "";
     const vendor = container.dataset.vendor || "";
+    const collections = container.dataset.collections || "";
     if (!productId) return;
 
     try {
-      const res = await fetch(`/apps/timer?type=coupons&productId=${productId}&tags=${encodeURIComponent(tags)}&vendor=${encodeURIComponent(vendor)}&t=${Date.now()}`);
+      const res = await fetch(`/apps/timer?type=coupons&productId=${productId}&tags=${encodeURIComponent(tags)}&vendor=${encodeURIComponent(vendor)}&collections=${encodeURIComponent(collections)}&t=${Date.now()}`);
       const data = await res.json();
       
       if (!data.coupons || data.coupons.length === 0) {

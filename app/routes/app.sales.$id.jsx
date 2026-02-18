@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData, useSubmit, useNavigation, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
-import { getSale, updateSale, applySale, revertSale } from "../models/sale.server";
+import { getSale, updateSale, applySale, revertSale, hasActiveSale } from "../models/sale.server";
 import { getTimers } from "../models/timer.server";
 import { checkLimit } from "../models/billing.server";
 import {
@@ -138,6 +138,12 @@ export async function action({ request, params }) {
     if (!allowed) {
         return json({ errors: { base: "You have reached the limit for your current plan. Please upgrade to reactivate this sake." } }, { status: 403 });
     }
+
+    const hasActive = await hasActiveSale(session.shop);
+    if (hasActive) {
+       return json({ errors: { base: "Only one sale can be active at a time. Please deactivate the currently active sale first." } }, { status: 400 });
+    }
+
     const count = await applySale(params.id, admin);
     return json({ success: true, message: `Sale reactivated. ${count} prices updated.` });
   }
