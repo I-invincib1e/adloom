@@ -7,7 +7,7 @@ import {
 import { SearchIcon } from "@shopify/polaris-icons";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { DirtyStateModal } from "../components/DirtyStateModal";
-import StrategyExample from "../components/StrategyExample";
+import { StrategyExample } from "../components/StrategyExample";
 
 export async function loader({ request, params }) {
   console.log("Loading Sale:", params.id); // Debug Log
