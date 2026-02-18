@@ -1,3 +1,14 @@
+import { json } from "@remix-run/node";
+import { useLoaderData, useActionData, useNavigation, useSubmit, useNavigate, useRouteError } from "@remix-run/react";
+import { useState, useEffect } from "react";
+import {
+  Page, Layout, Text, Card, Button, BlockStack, Box, List, InlineStack, TextField, Select, Checkbox, RadioButton, Banner, Thumbnail, Tag, Icon, Collapsible, Badge
+} from "@shopify/polaris";
+import { SearchIcon } from "@shopify/polaris-icons";
+import { useAppBridge } from "@shopify/app-bridge-react";
+import { DirtyStateModal } from "../components/DirtyStateModal";
+import StrategyExample from "../components/StrategyExample";
+
 export async function loader({ request, params }) {
   console.log("Loading Sale:", params.id); // Debug Log
   const { authenticate } = await import("../shopify.server");
