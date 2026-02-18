@@ -4,7 +4,7 @@ import { useActionData, useNavigation, useSubmit, useLoaderData } from "@remix-r
 import { authenticate } from "../shopify.server";
 import { createCoupon } from "../models/coupon.server";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { checkLimit } from "../models/billing.server";
+import { checkLimit, checkDesignLimit } from "../models/billing.server";
 import { DirtyStateModal } from "../components/DirtyStateModal";
 import {
   Page,
@@ -23,12 +23,17 @@ import {
   Tabs,
   RangeSlider,
   FormLayout,
+  Icon,
+  Modal,
+  Badge,
 } from "@shopify/polaris";
+import { LockIcon } from "@shopify/polaris-icons";
 
 export async function loader({ request }) {
   const { session } = await authenticate.admin(request);
   const allowed = await checkLimit(request, "coupons");
-  return json({ allowed });
+  const designAllowed = await checkDesignLimit(request);
+  return json({ allowed, designAllowed });
 }
 
 export async function action({ request }) {
@@ -58,13 +63,28 @@ export async function action({ request }) {
 
   const products = JSON.parse(productsStr || "[]");
 
+  const styleStr = formData.get("style");
+  const style = JSON.parse(styleStr || "{}");
+  const preset = style.preset || "standard";
+  
+  // Design Gating: Only "standard" and "minimal" are free/basic.
+  // "neon", "gold", "glass", "ticket" (and potentially others) are Premium.
+  const isPremiumPreset = !["standard", "minimal"].includes(preset);
+  
+  if (isPremiumPreset) {
+      const designAllowed = await checkDesignLimit(request);
+      if (!designAllowed) {
+          return json({ errors: { base: `The "${preset}" design is locked to Growth and Pro plans. Please upgrade or choose Standard/Minimal.` } }, { status: 403 });
+      }
+  }
+
   await createCoupon({
     offerTitle,
     couponCode: couponCode.toUpperCase(),
     description,
     startTime,
     endTime,
-    style: formData.get("style"),
+    style: styleStr,
     products,
   }, session.shop);
 
@@ -76,10 +96,11 @@ export default function NewCouponPage() {
   const submit = useSubmit();
   const actionData = useActionData();
   const navigation = useNavigation();
-  const { allowed } = useLoaderData();
+  const { allowed, designAllowed } = useLoaderData();
   const isLoading = navigation.state === "submitting";
 
   const [isDirty, setIsDirty] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   // Wrap setters to mark dirty
   const dirty = (setter) => (val) => { setIsDirty(true); setter(val); };
 
@@ -174,10 +195,24 @@ export default function NewCouponPage() {
       borderRadius: 4,
       borderStyle: "dashed",
       className: "ticket-stub",
+      premium: true,
     }
   };
 
+  const PRESET_META = {
+    standard: { premium: false },
+    neon: { premium: true },
+    gold: { premium: true },
+    glass: { premium: true },
+    minimal: { premium: false },
+    ticket: { premium: true },
+  };
+
   const handlePresetChange = (presetKey) => {
+    if (PRESET_META[presetKey]?.premium && !designAllowed) {
+      setShowUpgradeModal(true);
+      return;
+    }
     dirty(setStylePreset)(presetKey);
     const p = PRESETS[presetKey];
     dirty(setStyleConfig)(prev => ({ ...prev, ...p }));
@@ -259,7 +294,7 @@ export default function NewCouponPage() {
       <TextField
         label={label}
         value={value}
-        onChange={onChange}
+        onChange={(v) => { if(!designAllowed) setShowUpgradeModal(true); else onChange(v); }}
         autoComplete="off"
         prefix={
           <div style={{ position: "relative", width: 24, height: 24 }}>
@@ -267,7 +302,7 @@ export default function NewCouponPage() {
              <input
                 type="color"
                 value={value?.includes('gradient') ? "#ffffff" : value}
-                onChange={(e) => onChange(e.target.value)}
+                onChange={(e) => { if(!designAllowed) setShowUpgradeModal(true); else onChange(e.target.value); }}
                 style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%" }}
              />
           </div>
@@ -407,9 +442,15 @@ export default function NewCouponPage() {
                       background: "var(--p-color-bg-surface-secondary)",
                       cursor: "pointer",
                       textAlign: "center",
-                      transition: "all 0.2s"
+                      transition: "all 0.2s",
+                      position: "relative"
                     }}
                   >
+                    {PRESET_META[key]?.premium && !designAllowed && (
+                        <div style={{ position: "absolute", top: "5px", right: "5px", color: "#6d7175" }}>
+                            <Icon source={LockIcon} tone="subdued" />
+                        </div>
+                    )}
                     <div style={{ width: "100%", height: "40px", borderRadius: "4px", marginBottom: "8px", overflow: "hidden", border: "1px solid #ddd" }}>
                        <div style={{ 
                          width: "100%", height: "100%", 
@@ -429,48 +470,53 @@ export default function NewCouponPage() {
 
         <Card>
           <BlockStack gap="400">
-            <Text as="h2" variant="headingSm">Manual Customization</Text>
-            <FormLayout>
-              <FormLayout.Group>
-                 <ColorInput label="Background" value={styleConfig.backgroundColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, backgroundColor: v }))} />
-                 <ColorInput label="Border" value={styleConfig.borderColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, borderColor: v }))} />
-              </FormLayout.Group>
-              <FormLayout.Group>
-                 <ColorInput label="Text Color" value={styleConfig.textColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, textColor: v }))} />
-                 <ColorInput label="Code Color" value={styleConfig.codeColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, codeColor: v }))} />
-              </FormLayout.Group>
-              <FormLayout.Group>
-                <Select
-                  label="Typography"
-                  options={["Inter", "Roboto", "Monospace", "Serif", "Outfit"].map(f => ({ label: f, value: f }))}
-                  value={styleConfig.typography}
-                  onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, typography: v }))}
+            <InlineStack align="space-between">
+                <Text as="h2" variant="headingSm">Manual Customization</Text>
+                {!designAllowed && <Badge tone="attention">Pro Feature</Badge>}
+            </InlineStack>
+            <Box paddingBlockStart="200" style={{ opacity: designAllowed ? 1 : 0.6, pointerEvents: designAllowed ? 'auto' : 'none' }}>
+                <FormLayout>
+                <FormLayout.Group>
+                    <ColorInput label="Background" value={styleConfig.backgroundColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, backgroundColor: v }))} />
+                    <ColorInput label="Border" value={styleConfig.borderColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, borderColor: v }))} />
+                </FormLayout.Group>
+                <FormLayout.Group>
+                    <ColorInput label="Text Color" value={styleConfig.textColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, textColor: v }))} />
+                    <ColorInput label="Code Color" value={styleConfig.codeColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, codeColor: v }))} />
+                </FormLayout.Group>
+                <FormLayout.Group>
+                    <Select
+                    label="Typography"
+                    options={["Inter", "Roboto", "Monospace", "Serif", "Outfit"].map(f => ({ label: f, value: f }))}
+                    value={styleConfig.typography}
+                    onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, typography: v }))}
+                    />
+                    <Select
+                    label="Border Style"
+                    options={[
+                        { label: "Solid", value: "solid" },
+                        { label: "Dashed", value: "dashed" },
+                        { label: "Dotted", value: "dotted" },
+                        { label: "Double", value: "double" },
+                    ]}
+                    value={styleConfig.borderStyle}
+                    onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, borderStyle: v }))}
+                    />
+                </FormLayout.Group>
+                <RangeSlider
+                    label="Corner Radius"
+                    value={styleConfig.borderRadius}
+                    onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, borderRadius: v }))}
+                    min={0} max={30} output
                 />
-                <Select
-                  label="Border Style"
-                  options={[
-                    { label: "Solid", value: "solid" },
-                    { label: "Dashed", value: "dashed" },
-                    { label: "Dotted", value: "dotted" },
-                    { label: "Double", value: "double" },
-                  ]}
-                  value={styleConfig.borderStyle}
-                  onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, borderStyle: v }))}
+                <RangeSlider
+                    label="Font Size"
+                    value={styleConfig.fontSize}
+                    onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, fontSize: v }))}
+                    min={12} max={24} output
                 />
-              </FormLayout.Group>
-              <RangeSlider
-                label="Corner Radius"
-                value={styleConfig.borderRadius}
-                onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, borderRadius: v }))}
-                min={0} max={30} output
-              />
-              <RangeSlider
-                label="Font Size"
-                value={styleConfig.fontSize}
-                onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, fontSize: v }))}
-                min={12} max={24} output
-              />
-            </FormLayout>
+                </FormLayout>
+            </Box>
           </BlockStack>
         </Card>
      </BlockStack>
@@ -556,6 +602,37 @@ export default function NewCouponPage() {
           </BlockStack>
         </Layout.Section>
       </Layout>
+      <Modal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        title="Upgrade to Unlock Premium Designs"
+        primaryAction={{
+          content: "View Plans",
+          onAction: () => window.location.href = "/app/pricing",
+        }}
+        secondaryActions={[
+          {
+            content: "Maybe Later",
+            onAction: () => setShowUpgradeModal(false),
+          },
+        ]}
+      >
+        <Modal.Section>
+          <BlockStack gap="400">
+            <Banner tone="info">
+               <p>Custom styles and premium presets are included in the **Growth** and **Pro** plans.</p>
+            </Banner>
+            <Text as="p">
+              Impress your customers with high-converting designs, unique layouts, and custom branding tailored to your store's identity.
+            </Text>
+            <BlockStack gap="200">
+               <InlineStack gap="200"><Icon source={LockIcon} tone="success" /><Text as="span">Neon, Gold & Glass Styles</Text></InlineStack>
+               <InlineStack gap="200"><Icon source={LockIcon} tone="success" /><Text as="span">Full Design Customization</Text></InlineStack>
+               <InlineStack gap="200"><Icon source={LockIcon} tone="success" /><Text as="span">Custom Google Fonts</Text></InlineStack>
+            </BlockStack>
+          </BlockStack>
+        </Modal.Section>
+      </Modal>
     </Page>
   );
 }

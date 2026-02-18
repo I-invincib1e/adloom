@@ -3,9 +3,9 @@ import { json, redirect } from "@remix-run/node";
 import { useActionData, useSubmit, useNavigation, useLoaderData, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { DirtyStateModal } from "../components/DirtyStateModal";
 import { authenticate } from "../shopify.server";
-import { createSale, applySale, hasActiveSale } from "../models/sale.server"; 
+import { createSale, applySale } from "../models/sale.server"; 
 import { getTimers } from "../models/timer.server";
-import { checkLimit } from "../models/billing.server";
+import { checkVariantLimit, checkActiveSaleConstraint } from "../models/billing.server";
 import {
   Page,
   Layout,
@@ -32,10 +32,9 @@ import { StrategyExample } from "../components/StrategyExample";
 
 export async function loader({ request }) {
   const { session } = await authenticate.admin(request);
-  const allowed = await checkLimit(request, "sales");
   try {
     const timers = await getTimers(session.shop);
-    return json({ timers, allowed });
+    return json({ timers, allowed: true });
   } catch (error) {
     console.error("Loader failed:", error);
     throw new Response("Failed to load timers", { status: 500 });
@@ -44,10 +43,6 @@ export async function loader({ request }) {
 
 export async function action({ request }) {
   const { admin, session } = await authenticate.admin(request);
-  const allowed = await checkLimit(request, "sales");
-  if (!allowed) {
-    return json({ errors: { base: "You have reached the limit for your current plan. Please upgrade to create more sales." } }, { status: 403 });
-  }
 
   try {
   const formData = await request.formData();
@@ -204,18 +199,36 @@ export async function action({ request }) {
 
   // Deduplicate items
   const uniqueItems = Array.from(new Map(items.map(item => [item.variantId, item])).values());
+  const variantIds = uniqueItems.map(i => i.variantId);
 
-  // Check for existing active sale if this one is starting immediately
+  // Check for conflicts and limits across all active/scheduled sales
   const start = new Date(startTime);
+  const end = new Date(endTime);
   const now = new Date();
   
-  if (start <= now) {
-    const hasActive = await hasActiveSale(session.shop);
-    if (hasActive) {
-       return json({ errors: { base: "Only one sale can be active at a time. Please deactivate the current sale before creating a new active one." } }, { status: 400 });
-    }
+  // 1. Check total sales limit (Especially for Free plan: 1 sale limit)
+  const { getPlanUsage, checkGlobalVariantLimit } = await import("../models/billing.server");
+  const usage = await getPlanUsage(request);
+  if (usage.totalSales.used >= usage.totalSales.limit) {
+    return json({ 
+      errors: { 
+        base: `You've reached the ${usage.totalSales.limit} sale limit for the ${usage.plan} plan. Please upgrade to create more sales.` 
+      } 
+    }, { status: 400 });
   }
 
+  // 2. Check for product overlaps and timer consistency
+  const { checkItemOverlaps } = await import("../models/sale.server");
+  const overlapCheck = await checkItemOverlaps(session.shop, variantIds, null, start, end, timerId);
+  if (!overlapCheck.ok) {
+      return json({ errors: { base: overlapCheck.message } }, { status: 400 });
+  }
+  
+  // 3. Check global variant limit (Time-aware)
+  const variantLimitCheck = await checkGlobalVariantLimit(request, variantIds, start, end);
+  if (!variantLimitCheck.ok) {
+       return json({ errors: { base: variantLimitCheck.message } }, { status: 400 });
+  }
   const sale = await createSale({
     shop: session.shop,
     title,

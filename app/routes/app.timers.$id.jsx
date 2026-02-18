@@ -2,7 +2,7 @@ import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useNavigation, useSubmit, useNavigate } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getTimer, updateTimer, deleteTimer, duplicateTimer } from "../models/timer.server";
-import { checkLimit } from "../models/billing.server";
+import { checkLimit, checkDesignLimit } from "../models/billing.server";
 import { TimerForm } from "../components/TimerForm";
 import { DirtyStateModal } from "../components/DirtyStateModal";
 import { Page, Modal, Text, BlockStack } from "@shopify/polaris";
@@ -12,7 +12,8 @@ export async function loader({ request, params }) {
   const { session } = await authenticate.admin(request);
   const timer = await getTimer(params.id, session.shop);
   if (!timer) throw new Response("Not Found", { status: 404 });
-  return json({ timer });
+  const designAllowed = await checkDesignLimit(request);
+  return json({ timer, designAllowed });
 }
 
 export async function action({ request, params }) {
@@ -21,6 +22,19 @@ export async function action({ request, params }) {
 
   if (contentType.includes("application/json")) {
     const formData = await request.json();
+    
+    // Check Design Limit
+    const style = JSON.parse(formData.style || "{}");
+    const presetId = style.presetId;
+    const isPremiumPreset = ["urgent", "midnight", "custom"].includes(presetId);
+    
+    if (isPremiumPreset) {
+        const designAllowed = await checkDesignLimit(request);
+        if (!designAllowed) {
+            return json({ errors: { base: "Custom designs and premium presets are only available on the Growth plan. Please upgrade to use this design." } }, { status: 403 });
+        }
+    }
+
     await updateTimer(params.id, formData, session.shop);
     return redirect("/app/timers?success=true");
   }
@@ -46,7 +60,7 @@ export async function action({ request, params }) {
 }
 
 export default function EditTimerPage() {
-  const { timer } = useLoaderData();
+  const { timer, designAllowed } = useLoaderData();
   const submit = useSubmit();
   const nav = useNavigation();
   const navigate = useNavigate();
@@ -85,7 +99,7 @@ export default function EditTimerPage() {
       ]}
     >
       <DirtyStateModal isDirty={isDirty} />
-      <TimerForm timer={timer} onSave={handleSave} isLoading={isLoading} onDirty={() => setIsDirty(true)} />
+      <TimerForm timer={timer} onSave={handleSave} isLoading={isLoading} onDirty={() => setIsDirty(true)} designAllowed={designAllowed} />
 
       <Modal
         open={deleteModalOpen}

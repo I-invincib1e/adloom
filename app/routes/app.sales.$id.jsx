@@ -4,7 +4,7 @@ import { useLoaderData, useActionData, useSubmit, useNavigation, useNavigate, us
 import { authenticate } from "../shopify.server";
 import { getSale, updateSale, applySale, revertSale, hasActiveSale } from "../models/sale.server";
 import { getTimers } from "../models/timer.server";
-import { checkLimit } from "../models/billing.server";
+import { checkVariantLimit, checkActiveSaleConstraint } from "../models/billing.server";
 import {
   Page,
   Layout,
@@ -42,13 +42,11 @@ export async function loader({ request, params }) {
         throw new Response("Sale not found", { status: 404 });
     }
     
-    // ... existing logic ...
     // Fetch product details from Shopify for display
     const uniqueProductIds = [...new Set(sale.items.map(i => i.productId))];
 
     const productMap = {};
     for (const pid of uniqueProductIds) {
-        // ... existing logic ...
         try {
             const response = await admin.graphql(`
                 query getProduct($id: ID!) {
@@ -85,7 +83,6 @@ export async function loader({ request, params }) {
                 });
             }
         } catch (e) {
-            // If product was deleted, skip
             console.error("Error fetching product:", pid, e);
         }
     }
@@ -134,19 +131,27 @@ export async function action({ request, params }) {
     const sale = await getSale(params.id, session.shop);
     if (!sale) throw new Response("Unauthorized", { status: 403 });
 
-    const allowed = await checkLimit(request, "sales");
-    if (!allowed) {
-        return json({ errors: { base: "You have reached the limit for your current plan. Please upgrade to reactivate this sake." } }, { status: 403 });
-    }
+    const items = sale.items || [];
+    const variantIds = items.map(i => i.variantId);
 
-    const hasActive = await hasActiveSale(session.shop);
-    if (hasActive) {
-       return json({ errors: { base: "Only one sale can be active at a time. Please deactivate the currently active sale first." } }, { status: 400 });
+    // 1. Check for product overlaps and timer consistency
+    const { checkItemOverlaps } = await import("../models/sale.server");
+    const overlapCheck = await checkItemOverlaps(session.shop, variantIds, params.id, sale.startTime, sale.endTime, sale.timerId);
+    if (!overlapCheck.ok) {
+        return json({ errors: { base: overlapCheck.message } }, { status: 400 });
+    }
+    
+    // 2. Check global variant limit (Time-aware)
+    const { checkGlobalVariantLimit } = await import("../models/billing.server");
+    const variantLimitCheck = await checkGlobalVariantLimit(request, variantIds, sale.startTime, sale.endTime, params.id);
+    if (!variantLimitCheck.ok) {
+         return json({ errors: { base: variantLimitCheck.message } }, { status: 400 });
     }
 
     const count = await applySale(params.id, admin);
     return json({ success: true, message: `Sale reactivated. ${count} prices updated.` });
   }
+
 
   // Handle save/update
   const title = formData.get("title");
@@ -179,9 +184,28 @@ export async function action({ request, params }) {
   }
 
   const uniqueItems = Array.from(new Map(items.map(item => [item.variantId, item])).values());
-
+  const variantIds = uniqueItems.map(i => i.variantId);
+  
+  // Check for conflicts and limits across all active/scheduled sales
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  const now = new Date();
   const sale = await getSale(params.id, session.shop);
   if (!sale) throw new Response("Unauthorized", { status: 403 });
+
+  // 1. Check for product overlaps and timer consistency
+  const { checkItemOverlaps } = await import("../models/sale.server");
+  const overlapCheck = await checkItemOverlaps(session.shop, variantIds, params.id, start, end, timerId);
+  if (!overlapCheck.ok) {
+      return json({ errors: { base: overlapCheck.message } }, { status: 400 });
+  }
+  
+  // 2. Check global variant limit (Time-aware)
+  const { checkGlobalVariantLimit } = await import("../models/billing.server");
+  const variantLimitCheck = await checkGlobalVariantLimit(request, variantIds, start, end, params.id);
+  if (!variantLimitCheck.ok) {
+       return json({ errors: { base: variantLimitCheck.message } }, { status: 400 });
+  }
 
   await updateSale(params.id, {
     shop: session.shop,

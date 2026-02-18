@@ -13,11 +13,16 @@ import {
   Tabs,
   Divider,
   Banner,
+  Icon,
+  Modal,
+  Badge,
 } from "@shopify/polaris";
+import { LockIcon } from "@shopify/polaris-icons";
 
-export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
+export function TimerForm({ timer, onSave, isLoading, disabled, onDirty, designAllowed }) {
   // --- State ---
   const [name, setName] = useState(timer?.name || "");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Force announcement bar defaults
   const ANNOUNCEMENT_DEFAULTS = {
@@ -61,6 +66,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
     {
       id: "standard",
       label: "Standard",
+      premium: false,
       config: {
         backgroundColor: "#000000",
         borderColor: "#000000",
@@ -75,6 +81,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
     {
       id: "minimal",
       label: "Minimal", 
+      premium: false,
       config: {
         backgroundColor: "#ffffff",
         borderColor: "#e1e3e5",
@@ -89,6 +96,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
     {
       id: "urgent",
       label: "Urgent",
+      premium: true,
       config: {
         backgroundColor: "#d82c0d",
         borderColor: "#d82c0d",
@@ -103,6 +111,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
     {
       id: "midnight",
       label: "Midnight",
+      premium: true,
       config: {
         backgroundColor: "#1a1a1a",
         borderColor: "#333333",
@@ -116,13 +125,16 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
     }
   ];
 
-  const [selectedPreset, setSelectedPreset] = useState("custom");
+  const [selectedPreset, setSelectedPreset] = useState("standard");
 
   const handlePresetChange = (presetId) => {
-    setSelectedPreset(presetId);
-    if (presetId === "custom") return;
-
     const preset = PRESETS.find(p => p.id === presetId);
+    if (preset?.premium && !designAllowed) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    setSelectedPreset(presetId);
     if (preset) {
       setConfig(prev => ({
         ...prev,
@@ -132,7 +144,19 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
     }
   };
 
+  const handleCustomClick = () => {
+    if (!designAllowed) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    setSelectedPreset("custom");
+  }
+
   const handleConfigChange = (key, value) => {
+    if (!designAllowed) {
+      setShowUpgradeModal(true);
+      return;
+    }
     setConfig((prev) => ({ ...prev, [key]: value }));
     setSelectedPreset("custom");
     if (onDirty) onDirty();
@@ -150,14 +174,14 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
     onSave({
       name,
       textTemplate: "",
-      position: "header", // Internal flag, though actual placement is via CSS selector in config
-      style: JSON.stringify(config),
+      position: "header", 
+      style: JSON.stringify({ ...config, presetId: selectedPreset }), // Embed presetId
     });
   };
 
   const tabs = [
     { id: "content", content: "Content" },
-    { id: "style", content: "Style" },
+    { id: "style", content: "Visual Style" },
   ];
 
   // Mock preview time
@@ -217,37 +241,78 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
     </BlockStack>
   );
 
-
-
   const renderStyleTab = () => (
     <BlockStack gap="400" className="animate-fade-in-up">
       <Box>
         <Text as="h2" variant="headingSm">Design Presets</Text>
         <Box paddingBlockStart="200" paddingBlockEnd="400">
-             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
                 {PRESETS.map(preset => (
-                  <Button 
-                    key={preset.id} 
-                    onClick={() => handlePresetChange(preset.id)} 
-                    variant={selectedPreset === preset.id ? "primary" : "secondary"}
-                  >
-                    {preset.label}
-                  </Button>
+                    <div 
+                        key={preset.id} 
+                        onClick={() => handlePresetChange(preset.id)}
+                        style={{ 
+                            padding: "12px", 
+                            borderRadius: "12px", 
+                            border: `2px solid ${selectedPreset === preset.id ? "var(--p-color-border-interactive)" : "transparent"}`,
+                            background: "var(--p-color-bg-surface-secondary)",
+                            cursor: "pointer",
+                            textAlign: "center",
+                            transition: "all 0.2s",
+                            position: "relative"
+                        }}
+                    >
+                        {preset.premium && !designAllowed && (
+                            <div style={{ position: "absolute", top: "5px", right: "5px", color: "#6d7175" }}>
+                                <Icon source={LockIcon} tone="subdued" />
+                            </div>
+                        )}
+                        <div style={{ width: "100%", height: "40px", borderRadius: "4px", marginBottom: "8px", overflow: "hidden", border: "1px solid #ddd" }}>
+                           <div style={{ 
+                             width: "100%", height: "100%", 
+                             background: preset.config.backgroundColor,
+                             display: "flex", alignItems: "center", justifyContent: "center",
+                             color: preset.config.titleColor,
+                             fontSize: "10px", fontWeight: "bold"
+                           }}>00:00:00</div>
+                        </div>
+                        <Text variant="bodyXs" fontWeight="medium">{preset.label}</Text>
+                    </div>
                 ))}
-                <Button 
-                  onClick={() => handlePresetChange("custom")} 
-                  variant={selectedPreset === "custom" ? "primary" : "secondary"}
+                <div 
+                    onClick={handleCustomClick}
+                    style={{ 
+                        padding: "12px", 
+                        borderRadius: "12px", 
+                        border: `2px solid ${selectedPreset === "custom" ? "var(--p-color-border-interactive)" : "transparent"}`,
+                        background: "var(--p-color-bg-surface-secondary)",
+                        cursor: "pointer",
+                        textAlign: "center",
+                        transition: "all 0.2s",
+                        position: "relative"
+                    }}
                 >
-                  Custom
-                </Button>
-             </div>
+                    {!designAllowed && (
+                        <div style={{ position: "absolute", top: "5px", right: "5px", color: "#6d7175" }}>
+                            <Icon source={LockIcon} tone="subdued" />
+                        </div>
+                    )}
+                    <div style={{ width: "100%", height: "40px", borderRadius: "4px", marginBottom: "8px", overflow: "hidden", border: "1px solid #ddd", display: "flex", alignItems: "center", justifyContent: "center", background: "#fff" }}>
+                        <Text variant="bodyXs" fontWeight="bold" tone="subdued">Edit</Text>
+                    </div>
+                    <Text variant="bodyXs" fontWeight="medium">Custom</Text>
+                </div>
+            </div>
         </Box>
         
         <Divider />
         <Box paddingBlockStart="400">
-            <Text as="h2" variant="headingSm">Appearance</Text>
+            <InlineStack align="space-between">
+                <Text as="h2" variant="headingSm">Manual Customization</Text>
+                {!designAllowed && <Badge tone="attention">Pro Feature</Badge>}
+            </InlineStack>
         </Box>
-        <Box paddingBlockStart="200">
+        <Box paddingBlockStart="200" style={{ opacity: designAllowed ? 1 : 0.6, pointerEvents: designAllowed ? 'auto' : 'none' }}>
           <FormLayout>
              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 <ColorInput label="Background" value={config.backgroundColor} onChange={(v) => handleConfigChange("backgroundColor", v)} />
@@ -341,6 +406,38 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
           </BlockStack>
         </div>
       </InlineStack>
+
+      <Modal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        title="Upgrade to Unlock Premium Designs"
+        primaryAction={{
+          content: "View Plans",
+          onAction: () => window.location.href = "/app/pricing",
+        }}
+        secondaryActions={[
+          {
+            content: "Maybe Later",
+            onAction: () => setShowUpgradeModal(false),
+          },
+        ]}
+      >
+        <Modal.Section>
+          <BlockStack gap="400">
+            <Banner tone="info">
+               <p>Custom styles and premium presets are included in the **Growth** and **Pro** plans.</p>
+            </Banner>
+            <Text as="p">
+              Take your store's urgency to the next level with custom branding, advanced typography, and exclusive design presets.
+            </Text>
+            <BlockStack gap="200">
+               <InlineStack gap="200"><Icon source={LockIcon} tone="success" /><Text as="span">Full Color Customization</Text></InlineStack>
+               <InlineStack gap="200"><Icon source={LockIcon} tone="success" /><Text as="span">Premium Timer Presets</Text></InlineStack>
+               <InlineStack gap="200"><Icon source={LockIcon} tone="success" /><Text as="span">Custom Google Fonts</Text></InlineStack>
+            </BlockStack>
+          </BlockStack>
+        </Modal.Section>
+      </Modal>
     </BlockStack>
   );
 }

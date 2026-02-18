@@ -76,10 +76,26 @@ export async function action({ request }) {
         await revertSale(id, admin);
       }
     } else if (action === "activate" && saleId) {
-      const hasActive = await hasActiveSale(session.shop);
-      if (hasActive) {
-         return json({ success: false, error: "Only one sale can be active at a time. Please deactivate the currently active sale first." }, { status: 400 });
+      const { getSale } = await import("../models/sale.server");
+      const sale = await getSale(saleId, session.shop);
+      if (!sale) return json({ success: false, error: "Sale not found" }, { status: 404 });
+
+      const variantIds = (sale.items || []).map(i => i.variantId);
+
+      // 1. Check for product overlaps
+      const { checkItemOverlaps } = await import("../models/sale.server");
+      const overlapCheck = await checkItemOverlaps(session.shop, variantIds, saleId);
+      if (!overlapCheck.ok) {
+          return json({ success: false, error: overlapCheck.message }, { status: 400 });
       }
+      
+      // 2. Check global variant limit
+      const { checkGlobalVariantLimit } = await import("../models/billing.server");
+      const variantLimitCheck = await checkGlobalVariantLimit(request, variantIds, saleId);
+      if (!variantLimitCheck.ok) {
+           return json({ success: false, error: variantLimitCheck.message }, { status: 400 });
+      }
+
       const count = await applySale(saleId, admin);
       return json({ success: true, count });
     } else if (action === "bulkDelete") {
@@ -119,10 +135,10 @@ export default function Index() {
     return [
       {
         id: "embed",
-        label: "Activate Storefront Embed",
+        label: "Activate Storefront",
         done: false, // In a real app, we'd check shop settings via API
         actionLabel: "Activate Now",
-        url: "https://admin.shopify.com/themes/current/editor?context=apps",
+        url: "https://admin.shopify.com/themes/current/editor",
         external: true,
         target: "_top"
       },

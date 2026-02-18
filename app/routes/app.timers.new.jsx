@@ -1,7 +1,7 @@
 import { json, redirect } from "@remix-run/node";
 import { useActionData, useNavigation, useSubmit, useLoaderData } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
-import { checkLimit } from "../models/billing.server";
+import { checkLimit, checkDesignLimit } from "../models/billing.server";
 import { createTimer } from "../models/timer.server";
 import { TimerForm } from "../components/TimerForm";
 import { DirtyStateModal } from "../components/DirtyStateModal";
@@ -11,7 +11,8 @@ import { Page, Layout, Banner, Button } from "@shopify/polaris";
 export async function loader({ request }) {
   await authenticate.admin(request);
   const allowed = await checkLimit(request, "timers");
-  return json({ allowed });
+  const designAllowed = await checkDesignLimit(request);
+  return json({ allowed, designAllowed });
 }
 
 export async function action({ request }) {
@@ -20,8 +21,20 @@ export async function action({ request }) {
   if (!allowed) {
       return json({ errors: { base: "Limit reached" } }, { status: 403 });
   }
-  const formData = await request.json(); // Use JSON submit
+  const formData = await request.json(); 
   
+  // Check Design Limit
+  const style = JSON.parse(formData.style || "{}");
+  const presetId = style.presetId;
+  const isPremiumPreset = ["urgent", "midnight", "custom"].includes(presetId);
+  
+  if (isPremiumPreset) {
+      const designAllowed = await checkDesignLimit(request);
+      if (!designAllowed) {
+          return json({ errors: { base: "Custom designs and premium presets are only available on the Growth plan. Please upgrade to use this design." } }, { status: 403 });
+      }
+  }
+
   await createTimer(formData, session.shop);
   return redirect("/app/timers?success=true");
 }
@@ -29,7 +42,7 @@ export async function action({ request }) {
 export default function NewTimerPage() {
   const submit = useSubmit();
   const nav = useNavigation();
-  const { allowed } = useLoaderData();
+  const { allowed, designAllowed } = useLoaderData();
   const isLoading = nav.state === "submitting";
 
   const [isDirty, setIsDirty] = useState(false);
@@ -50,7 +63,7 @@ export default function NewTimerPage() {
         </Layout>
       )}
       <DirtyStateModal isDirty={isDirty} />
-      <TimerForm onSave={handleSave} isLoading={isLoading} disabled={!allowed} onDirty={() => setIsDirty(true)} />
+      <TimerForm onSave={handleSave} isLoading={isLoading} disabled={!allowed} onDirty={() => setIsDirty(true)} designAllowed={designAllowed} />
     </Page>
   );
 }
