@@ -19,6 +19,7 @@ const shopify = shopifyApp({
   sessionStorage: new PrismaSessionStorage(prisma),
   distribution: AppDistribution.AppStore,
   // Webhooks are now configured in shopify.app.toml and handled by app/routes/webhooks.jsx
+  // We will need to verify if APP_SUBSCRIPTION_UPDATE needs explicit registration or config in TOML.
   billing: {
     "Basic": {
       replacementBehavior: BillingReplacementBehavior.ApplyImmediately,

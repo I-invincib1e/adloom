@@ -58,6 +58,7 @@ export async function action({ request }) {
   const startTime = formData.get("startTime");
   const endTime = formData.get("endTime");
   const itemsString = formData.get("items");
+  const clientTimezoneOffset = formData.get("clientTimezoneOffset");
 
   // New fields
   const overrideCents = formData.get("overrideCents") === "true";
@@ -82,19 +83,30 @@ export async function action({ request }) {
       if (appliesToType === "collections" && selectedCollections.length > 0) {
           for (const collection of selectedCollections) {
                const collectionGid = collection.id;
-               const response = await admin.graphql(`
-                 query getCollectionProducts($id: ID!) {
-                   collection(id: $id) {
-                     products(first: 50) {
-                       edges {
-                         node {
-                           id
-                           title
-                           variants(first: 50) {
-                             edges {
-                               node {
-                                 id
-                                 title
+               let hasNextPage = true;
+               let cursor = null;
+               let loops = 0;
+
+               while (hasNextPage && loops < 15) { // Safety limit ~3750 products
+                 loops++;
+                 const response = await admin.graphql(`
+                   query getCollectionProducts($id: ID!, $cursor: String) {
+                     collection(id: $id) {
+                       products(first: 250, after: $cursor) {
+                         pageInfo {
+                           hasNextPage
+                           endCursor
+                         }
+                         edges {
+                           node {
+                             id
+                             title
+                             variants(first: 50) {
+                               edges {
+                                 node {
+                                   id
+                                   title
+                                 }
                                }
                              }
                            }
@@ -102,92 +114,150 @@ export async function action({ request }) {
                        }
                      }
                    }
-                 }
-               `, { variables: { id: collectionGid } });
-               const data = await response.json();
-               const products = data?.data?.collection?.products?.edges || [];
-               products.forEach(({ node: product }) => {
-                   const variants = product.variants?.edges || [];
-                   variants.forEach(({ node: variant }) => {
-                       items.push({
-                           productId: product.id,
-                           variantId: variant.id,
-                           productTitle: product.title,
-                           variantTitle: variant.title,
-                       });
-                   });
-               });
+                 `, { variables: { id: collectionGid, cursor } });
+                 
+                 const data = await response.json();
+                 const connection = data?.data?.collection?.products;
+                 
+                 if (!connection) break;
+
+                 const products = connection.edges || [];
+                 products.forEach(({ node: product }) => {
+                     const variants = product.variants?.edges || [];
+                     variants.forEach(({ node: variant }) => {
+                         items.push({
+                             productId: product.id,
+                             variantId: variant.id,
+                             productTitle: product.title,
+                             variantTitle: variant.title,
+                         });
+                     });
+                 });
+
+                 hasNextPage = connection.pageInfo?.hasNextPage;
+                 cursor = connection.pageInfo?.endCursor;
+               }
+               
+               if (hasNextPage) {
+                   console.warn(`[Loom] Collection ${collectionGid} product fetch limit reached (15 pages). Items may be truncated.`);
+               }
           }
       } else if (appliesToType === "tags" && selectedTags.length > 0) {
            const tagQuery = selectedTags.map(t => `tag:${t}`).join(" OR ");
-           const response = await admin.graphql(`
-             query getProductsByTag($query: String!) {
-               products(first: 50, query: $query) {
-                 edges {
-                   node {
-                     id
-                     title
-                     variants(first: 50) {
-                       edges {
-                         node {
-                           id
-                           title
+           let hasNextPage = true;
+           let cursor = null;
+           let loops = 0;
+
+           while (hasNextPage && loops < 15) {
+             loops++;
+             const response = await admin.graphql(`
+               query getProductsByTag($query: String!, $cursor: String) {
+                 products(first: 250, query: $query, after: $cursor) {
+                   pageInfo {
+                     hasNextPage
+                     endCursor
+                   }
+                   edges {
+                     node {
+                       id
+                       title
+                       variants(first: 50) {
+                         edges {
+                           node {
+                             id
+                             title
+                           }
                          }
                        }
                      }
                    }
                  }
                }
-             }
-           `, { variables: { query: tagQuery } });
-           const data = await response.json();
-           const products = data?.data?.products?.edges || [];
-           products.forEach(({ node: product }) => {
-               const variants = product.variants?.edges || [];
-               variants.forEach(({ node: variant }) => {
-                   items.push({
-                       productId: product.id,
-                       variantId: variant.id,
-                       productTitle: product.title,
-                       variantTitle: variant.title,
-                   });
-               });
-           });
+             `, { variables: { query: tagQuery, cursor } });
+             
+             const data = await response.json();
+             const connection = data?.data?.products;
+
+             if (!connection) break;
+
+             const products = connection.edges || [];
+             products.forEach(({ node: product }) => {
+                 const variants = product.variants?.edges || [];
+                 variants.forEach(({ node: variant }) => {
+                     items.push({
+                         productId: product.id,
+                         variantId: variant.id,
+                         productTitle: product.title,
+                         variantTitle: variant.title,
+                     });
+                 });
+             });
+
+             hasNextPage = connection.pageInfo?.hasNextPage;
+             cursor = connection.pageInfo?.endCursor;
+           }
+           
+           if (hasNextPage) {
+               console.warn(`[Loom] Tag query "${tagQuery}" product fetch limit reached (15 pages). Items may be truncated.`);
+           }
       } else if (appliesToType === "vendors" && selectedVendors.length > 0) {
            const vendorQuery = selectedVendors.map(v => `vendor:${v}`).join(" OR ");
-           const response = await admin.graphql(`
-             query getProductsByVendor($query: String!) {
-               products(first: 50, query: $query) {
-                 edges {
-                   node {
-                     id
-                     title
-                     variants(first: 50) {
-                       edges {
-                         node {
-                           id
-                           title
+           let hasNextPage = true;
+           let cursor = null;
+           let loops = 0;
+
+           while (hasNextPage && loops < 15) {
+             loops++;
+             const response = await admin.graphql(`
+               query getProductsByVendor($query: String!, $cursor: String) {
+                 products(first: 250, query: $query, after: $cursor) {
+                   pageInfo {
+                     hasNextPage
+                     endCursor
+                   }
+                   edges {
+                     node {
+                       id
+                       title
+                       variants(first: 50) {
+                         edges {
+                           node {
+                             id
+                             title
+                           }
                          }
                        }
                      }
                    }
                  }
                }
-             }
-           `, { variables: { query: vendorQuery } });
-           const data = await response.json();
-           const products = data?.data?.products?.edges || [];
-           products.forEach(({ node: product }) => {
-               const variants = product.variants?.edges || [];
-               variants.forEach(({ node: variant }) => {
-                   items.push({
-                       productId: product.id,
-                       variantId: variant.id,
-                       productTitle: product.title,
-                       variantTitle: variant.title,
-                   });
-               });
-           });
+             `, { variables: { query: vendorQuery, cursor } });
+             
+             const data = await response.json();
+             const connection = data?.data?.products;
+             
+             if (!connection) break;
+
+             const products = connection.edges || [];
+             products.forEach(({ node: product }) => {
+                 const variants = product.variants?.edges || [];
+                 variants.forEach(({ node: variant }) => {
+                     items.push({
+                         productId: product.id,
+                         variantId: variant.id,
+                         productTitle: product.title,
+                         variantTitle: variant.title,
+                     });
+                 });
+             });
+             
+             hasNextPage = connection.pageInfo?.hasNextPage;
+             cursor = connection.pageInfo?.endCursor;
+           }
+           
+           if (hasNextPage) {
+               console.warn(`[Loom] Vendor query "${vendorQuery}" product fetch limit reached (15 pages). Items may be truncated.`);
+           }
       }
   }
 
@@ -207,8 +277,24 @@ export async function action({ request }) {
   const variantIds = uniqueItems.map(i => i.variantId);
 
   // Check for conflicts and limits across all active/scheduled sales
-  const start = new Date(startTime);
-  const end = new Date(endTime);
+  // Treat input time as UTC initially so that the client offset (minutes from UTC) applies correctly.
+  // This avoids server-local-time interference.
+  let start = new Date(startTime + "Z");
+  let end = new Date(endTime + "Z");
+  
+  // Apply timezone adjustment if available
+  if (clientTimezoneOffset) {
+     const offset = parseInt(clientTimezoneOffset, 10);
+     if (!isNaN(offset)) {
+         // offset is in minutes behind UTC.
+         // e.g. Tokyo = -540. Form time 10:00. UTC time treated as 10:00.
+         // We want 10:00 Tokyo time, which is 01:00 UTC.
+         // 10:00 + (-9h) = 01:00.
+         // Formula: time + offset * 60 * 1000
+         start = new Date(start.getTime() + (offset * 60 * 1000));
+         end = new Date(end.getTime() + (offset * 60 * 1000));
+     }
+  }
   const now = new Date();
   
   // 1. Check total sales limit (Especially for Free plan: 1 sale limit)
@@ -237,8 +323,8 @@ export async function action({ request }) {
     title,
     discountType,
     value,
-    startTime,
-    endTime,
+    startTime: start,
+    endTime: end,
     items: uniqueItems,
     overrideCents,
     discountStrategy,
@@ -436,6 +522,10 @@ export default function NewSale() {
 
     const startDateTime = `${startDate}T${startTime}:00`;
     const endDateTime = setEndTimer ? `${endDate}T${endTime}:00` : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    
+    // Capture client offset (minutes relative to UTC).
+    // e.g. UTC+9 = -540. UTC-5 = 300.
+    const timezoneOffset = new Date().getTimezoneOffset().toString();
 
     const formData = new FormData();
     formData.append("title", title);
@@ -443,6 +533,7 @@ export default function NewSale() {
     formData.append("value", value);
     formData.append("startTime", startDateTime);
     formData.append("endTime", endDateTime);
+    formData.append("clientTimezoneOffset", timezoneOffset); // Send offset
     formData.append("items", JSON.stringify(selectedItems));
     
     formData.append("overrideCents", overrideCents.toString());
@@ -971,6 +1062,7 @@ export default function NewSale() {
             
             <div style={{ marginTop: "1rem", marginBottom: "3rem" }}>
                  <Button variant="primary" loading={isLoading} size="large" onClick={handleSubmit}>Create Discount</Button>
+                 {isLoading && <div style={{marginTop: "8px"}}><Text tone="subdued">Processing large request, this may take a moment...</Text></div>}
             </div>
 
           </BlockStack>

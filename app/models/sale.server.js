@@ -245,82 +245,106 @@ export async function applySale(saleId, admin) {
 
     if (!sale || sale.status === "ACTIVE" || sale.status === "COMPLETED") return;
 
-    const query = `
-      query getVariant($id: ID!) {
-        productVariant(id: $id) {
-          id
-          price
-          compareAtPrice
-          product {
-            id
-          }
-        }
-      }
-    `;
-
     const itemsToUpdate = [];
-    
-    for (const item of sale.items) {
-      try {
-        const response = await admin.graphql(query, {
-          variables: { id: item.variantId },
-        });
-        const { data } = await response.json();
-        
-        if (!data?.productVariant) {
-          console.warn(`[ApplySale] Variant ${item.variantId} not found. Skipping.`);
-          continue;
-        }
+    const BATCH_SIZE = 250;
+    const allItems = sale.items || [];
 
-        const currentPrice = parseFloat(data.productVariant.price);
-        const currentCompareAt = data.productVariant.compareAtPrice ? parseFloat(data.productVariant.compareAtPrice) : null;
-        
-        const strategy = sale.discountStrategy || "COMPARE_AT";
-        let basePrice = currentPrice;
-        let targetCompareAt = currentCompareAt;
-
-        if (strategy === "COMPARE_AT") {
-          basePrice = currentCompareAt || currentPrice;
-          targetCompareAt = basePrice;
-        } else if (strategy === "USE_CURRENT_AS_COMPARE") {
-          basePrice = currentPrice;
-          targetCompareAt = currentPrice;
-        } else if (strategy === "KEEP_COMPARE_AT") {
-          basePrice = currentPrice;
-          targetCompareAt = currentCompareAt;
-        } else if (strategy === "INCREASE_COMPARE") {
-          basePrice = currentPrice;
-          // Logic for INCREASE_COMPARE is different: newPrice = currentPrice, compareAt = currentPrice + value
-        }
-
-        let discountAmount = 0;
-        if (sale.discountType === "PERCENTAGE") {
-          discountAmount = basePrice * (sale.value / 100);
-        } else if (sale.discountType === "FIXED_AMOUNT") {
-          discountAmount = sale.value;
-        }
-
-        let newPrice = basePrice - discountAmount;
-        let newCompareAt = targetCompareAt;
-
-        if (strategy === "INCREASE_COMPARE") {
-          newPrice = currentPrice;
-          newCompareAt = currentPrice + discountAmount;
-        }
-
-        if (newPrice < 0) newPrice = 0;
-
-        itemsToUpdate.push({
-          id: item.id,
-          productId: data.productVariant.product.id, 
-          variantId: item.variantId,
-          originalPrice: currentPrice,
-          newPrice: newPrice.toFixed(2),
-          newCompareAt: newCompareAt ? newCompareAt.toFixed(2) : null,
-        });
-      } catch (innerError) {
-        console.error(`Error processing item ${item.id} in applySale:`, innerError);
+    // Helper to chunk array
+    const chunkArray = (arr, size) => {
+      const chunks = [];
+      for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
       }
+      return chunks;
+    };
+
+    const itemChunks = chunkArray(allItems, BATCH_SIZE);
+
+    for (const chunk of itemChunks) {
+        const variantIds = chunk.map(i => i.variantId);
+        
+        const query = `
+          query getVariants($ids: [ID!]!) {
+            nodes(ids: $ids) {
+              ... on ProductVariant {
+                id
+                price
+                compareAtPrice
+                product {
+                  id
+                }
+              }
+            }
+          }
+        `;
+
+        try {
+            const response = await admin.graphql(query, { variables: { ids: variantIds } });
+            const { data } = await response.json();
+            const nodes = data?.nodes || [];
+
+            // Create a map for quick lookup
+            const variantMap = new Map();
+            nodes.forEach(node => {
+                if (node) variantMap.set(node.id, node);
+            });
+
+            for (const item of chunk) {
+                const variantData = variantMap.get(item.variantId);
+                
+                if (!variantData) {
+                    console.warn(`[ApplySale] Variant ${item.variantId} not found in Shopify. Skipping.`);
+                    continue;
+                }
+
+                const currentPrice = parseFloat(variantData.price);
+                const currentCompareAt = variantData.compareAtPrice ? parseFloat(variantData.compareAtPrice) : null;
+                
+                const strategy = sale.discountStrategy || "COMPARE_AT";
+                let basePrice = currentPrice;
+                let targetCompareAt = currentCompareAt;
+
+                if (strategy === "COMPARE_AT") {
+                  basePrice = currentCompareAt || currentPrice;
+                  targetCompareAt = basePrice;
+                } else if (strategy === "USE_CURRENT_AS_COMPARE") {
+                  basePrice = currentPrice;
+                  targetCompareAt = currentPrice;
+                } else if (strategy === "KEEP_COMPARE_AT") {
+                  basePrice = currentPrice;
+                  targetCompareAt = currentCompareAt;
+                }
+
+                let discountAmount = 0;
+                if (sale.discountType === "PERCENTAGE") {
+                  discountAmount = basePrice * (sale.value / 100);
+                } else if (sale.discountType === "FIXED_AMOUNT") {
+                  discountAmount = sale.value;
+                }
+
+                let newPrice = basePrice - discountAmount;
+                let newCompareAt = targetCompareAt;
+
+                if (strategy === "INCREASE_COMPARE") {
+                  newPrice = currentPrice;
+                  newCompareAt = currentPrice + discountAmount;
+                }
+
+                if (newPrice < 0) newPrice = 0;
+
+                itemsToUpdate.push({
+                  id: item.id,
+                  productId: variantData.product.id, 
+                  variantId: item.variantId,
+                  originalPrice: currentPrice,
+                  newPrice: newPrice.toFixed(2),
+                  newCompareAt: newCompareAt ? newCompareAt.toFixed(2) : null,
+                });
+            }
+
+        } catch (batchError) {
+            console.error("Error processing batch in applySale:", batchError);
+        }
     }
 
     if (itemsToUpdate.length === 0) {
@@ -357,12 +381,17 @@ export async function applySale(saleId, admin) {
       }
     }
 
-    for (const update of itemsToUpdate) {
-       await prisma.saleItem.update({
-        where: { id: update.id },
-        data: { originalPrice: update.originalPrice },
-      });
-    }
+    // Batch update database records (Prisma doesn't support bulk update with different values easily, 
+    // so we might still need a loop, but strictly for DB which is faster than HTTP)
+    // Optimization: Use $transaction for DB updates
+    await prisma.$transaction(
+        itemsToUpdate.map(update => 
+            prisma.saleItem.update({
+                where: { id: update.id },
+                data: { originalPrice: update.originalPrice },
+            })
+        )
+    );
 
     await prisma.sale.update({
       where: { id: saleId },
@@ -386,74 +415,103 @@ export async function revertSale(saleId, admin) {
 
     if (!sale || sale.status !== "ACTIVE") return;
 
-    const query = `
-      query getVariant($id: ID!) {
-        productVariant(id: $id) {
-          id
-          price
-          compareAtPrice
-        }
-      }
-    `;
-
-    const mutation = `
-      mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-        productVariantsBulkUpdate(productId: $productId, variants: $variants) {
-          userErrors { field message }
-        }
-      }
-    `;
-
     const updatesByProduct = {};
+    const BATCH_SIZE = 250;
+    const allItems = sale.items || [];
 
-    for (const item of sale.items) {
-      try {
-        const response = await admin.graphql(query, { variables: { id: item.variantId } });
-        const { data } = await response.json();
-
-        if (!data?.productVariant) {
-          console.warn(`[RevertSale] Variant ${item.variantId} not found. Skipping reversion.`);
-          continue;
-        }
-
-        const currentPrice = parseFloat(data.productVariant.price);
-        const currentCompareAt = data.productVariant.compareAtPrice ? parseFloat(data.productVariant.compareAtPrice) : null;
-        
-        // Edge Case 2 Solution: Price Integrity Check
-        let expectedDiscountedPrice = item.originalPrice;
-        if (sale.discountType === "PERCENTAGE") {
-          expectedDiscountedPrice = item.originalPrice - (item.originalPrice * (sale.value / 100));
-        } else if (sale.discountType === "FIXED_AMOUNT") {
-          expectedDiscountedPrice = item.originalPrice - sale.value;
-        }
-
-        if (Math.abs(currentPrice - expectedDiscountedPrice) > 0.01 && !["0.00", "0"].includes(currentPrice.toFixed(2))) {
-           console.warn(`[RevertSale] Manual price change detected for variant ${item.variantId}. Expected ${expectedDiscountedPrice}, found ${currentPrice}. Preserving manual change.`);
-           continue; 
-        }
-
-        let targetPrice = String(item.originalPrice);
-        let targetCompareAt = null; // We might want to restore original compareAt too? 
-        // For simplicity, Loom currently snapshot only originalPrice.
-        
-        if (sale.deactivationStrategy === "REPLACE_WITH_COMPARE" && currentCompareAt) {
-          targetPrice = String(currentCompareAt);
-          targetCompareAt = null;
-        }
-
-        if (!updatesByProduct[item.productId]) updatesByProduct[item.productId] = [];
-        updatesByProduct[item.productId].push({
-          id: item.variantId,
-          price: targetPrice,
-          compareAtPrice: targetCompareAt
-        });
-      } catch (err) {
-        console.error(`Error processing reversion for item ${item.id}:`, err);
+    // Helper to chunk array
+    const chunkArray = (arr, size) => {
+      const chunks = [];
+      for (let i = 0; i < arr.length; i += size) {
+        chunks.push(arr.slice(i, i + size));
       }
+      return chunks;
+    };
+
+    const itemChunks = chunkArray(allItems, BATCH_SIZE);
+
+    for (const chunk of itemChunks) {
+        const variantIds = chunk.map(i => i.variantId);
+        
+        const query = `
+          query getVariants($ids: [ID!]!) {
+            nodes(ids: $ids) {
+              ... on ProductVariant {
+                id
+                price
+                compareAtPrice
+                product {
+                  id
+                }
+              }
+            }
+          }
+        `;
+
+        try {
+            const response = await admin.graphql(query, { variables: { ids: variantIds } });
+            const { data } = await response.json();
+            const nodes = data?.nodes || [];
+
+            const variantMap = new Map();
+            nodes.forEach(node => {
+                if (node) variantMap.set(node.id, node);
+            });
+
+            for (const item of chunk) {
+                const variantData = variantMap.get(item.variantId);
+                
+                if (!variantData) {
+                    console.warn(`[RevertSale] Variant ${item.variantId} not found. Skipping reversion.`);
+                    continue;
+                }
+
+                const currentPrice = parseFloat(variantData.price);
+                const currentCompareAt = variantData.compareAtPrice ? parseFloat(variantData.compareAtPrice) : null;
+                
+                // Edge Case 2 Solution: Price Integrity Check
+                let expectedDiscountedPrice = item.originalPrice;
+                if (sale.discountType === "PERCENTAGE") {
+                  expectedDiscountedPrice = item.originalPrice - (item.originalPrice * (sale.value / 100));
+                } else if (sale.discountType === "FIXED_AMOUNT") {
+                  expectedDiscountedPrice = item.originalPrice - sale.value;
+                }
+
+                if (Math.abs(currentPrice - expectedDiscountedPrice) > 0.01 && !["0.00", "0"].includes(currentPrice.toFixed(2))) {
+                   console.warn(`[RevertSale] Manual price change detected for variant ${item.variantId}. Expected ${expectedDiscountedPrice}, found ${currentPrice}. Preserving manual change.`);
+                   continue; 
+                }
+
+                let targetPrice = String(item.originalPrice);
+                let targetCompareAt = null; 
+                
+                if (sale.deactivationStrategy === "REPLACE_WITH_COMPARE" && currentCompareAt) {
+                  targetPrice = String(currentCompareAt);
+                  targetCompareAt = null;
+                }
+
+                if (!updatesByProduct[item.productId]) updatesByProduct[item.productId] = [];
+                updatesByProduct[item.productId].push({
+                  id: item.variantId,
+                  price: targetPrice,
+                  compareAtPrice: targetCompareAt
+                });
+            }
+        } catch (batchError) {
+             console.error("Error processing batch in revertSale:", batchError);
+        }
     }
 
     for (const productId in updatesByProduct) {
       try {
+        const mutation = `
+          mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+            productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+              userErrors { field message }
+            }
+          }
+        `;
+
         await admin.graphql(mutation, {
           variables: {
             productId,

@@ -132,6 +132,8 @@ export async function action({ request, params }) {
   const startTime = formData.get("startTime");
   const endTime = formData.get("endTime");
   const itemsString = formData.get("items");
+  const clientTimezoneOffset = formData.get("clientTimezoneOffset");
+
   const overrideCents = formData.get("overrideCents") === "true";
   const discountStrategy = formData.get("discountStrategy");
   const excludeDrafts = formData.get("excludeDrafts") === "true";
@@ -159,8 +161,20 @@ export async function action({ request, params }) {
   const variantIds = uniqueItems.map(i => i.variantId);
   
   // Check for conflicts and limits across all active/scheduled sales
-  const start = new Date(startTime);
-  const end = new Date(endTime);
+  // Treat input time as UTC initially so that the client offset (minutes from UTC) applies correctly.
+  // This avoids server-local-time interference.
+  let start = new Date(startTime + "Z");
+  let end = new Date(endTime + "Z");
+
+  // Apply timezone adjustment if available
+  if (clientTimezoneOffset) {
+     const offset = parseInt(clientTimezoneOffset, 10);
+     if (!isNaN(offset)) {
+         start = new Date(start.getTime() + (offset * 60 * 1000));
+         end = new Date(end.getTime() + (offset * 60 * 1000));
+     }
+  }
+
   const now = new Date();
   const sale = await getSale(params.id, session.shop);
   if (!sale) throw new Response("Unauthorized", { status: 403 });
@@ -182,8 +196,8 @@ export async function action({ request, params }) {
     title,
     discountType,
     value,
-    startTime,
-    endTime,
+    startTime: start,
+    endTime: end,
     items: uniqueItems,
     overrideCents,
     discountStrategy,
@@ -234,9 +248,17 @@ export default function EditSale() {
   // Dates
   const startDT = new Date(sale.startTime);
   const endDT = new Date(sale.endTime);
-  const [startDate, setStartDate] = useState(startDT.toISOString().split("T")[0]);
+  
+  // Helper to extraction local YYYY-MM-DD
+  const getLocalISODate = (date) => {
+    const offset = date.getTimezoneOffset();
+    const local = new Date(date.getTime() - (offset * 60 * 1000));
+    return local.toISOString().split("T")[0];
+  };
+
+  const [startDate, setStartDate] = useState(getLocalISODate(startDT));
   const [startTime, setStartTime] = useState(startDT.toTimeString().slice(0, 5));
-  const [endDate, setEndDate] = useState(endDT.toISOString().split("T")[0]);
+  const [endDate, setEndDate] = useState(getLocalISODate(endDT));
   const [endTime, setEndTime] = useState(endDT.toTimeString().slice(0, 5));
   const [setEndTimer, setSetEndTimer] = useState(true);
 
@@ -327,6 +349,7 @@ export default function EditSale() {
 
     const startDateTime = `${startDate}T${startTime}:00`;
     const endDateTime = setEndTimer ? `${endDate}T${endTime}:00` : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const timezoneOffset = new Date().getTimezoneOffset().toString();
 
     const formData = new FormData();
     formData.append("intent", "save");
@@ -335,6 +358,7 @@ export default function EditSale() {
     formData.append("value", value);
     formData.append("startTime", startDateTime);
     formData.append("endTime", endDateTime);
+    formData.append("clientTimezoneOffset", timezoneOffset); // Send offset
     formData.append("items", JSON.stringify(selectedItems));
 
     formData.append("overrideCents", overrideCents.toString());
