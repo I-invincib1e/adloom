@@ -18,11 +18,29 @@ import {
 export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
   // --- State ---
   const [name, setName] = useState(timer?.name || "");
-  const [position, setPosition] = useState(timer?.position || "below_price");
+  
+  // Force announcement bar defaults
+  const ANNOUNCEMENT_DEFAULTS = {
+    backgroundColor: "#000000",
+    borderColor: "#000000",
+    titleColor: "#ffffff",
+    subtitleColor: "#cccccc",
+    timerColor: "#ffffff",
+    borderSize: 0,
+    borderRadius: 0,
+    padding: 10,
+    fontSize: 15,
+    typography: "Outfit",
+    className: "rockit-timer-bar",
+    cssSelector: "header, #shopify-section-header, .header-wrapper, .site-header",
+    embedPosition: "after",
+    layoutMode: "banner",
+    preset: "announcement",
+  };
 
   // Parse existing style/content JSON or set defaults
   const initialConfig = timer?.style
-    ? JSON.parse(timer.style)
+    ? { ...JSON.parse(timer.style), ...ANNOUNCEMENT_DEFAULTS, preset: "announcement" } // Merge to enforce announcement
     : {
         // Content
         title: "Flash Sale Ends Soon!",
@@ -33,19 +51,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
           minutes: "M",
           seconds: "S",
         },
-
-        // Style (Banner Default)
-        backgroundColor: "#000000",
-        borderColor: "#000000",
-        borderSize: 0,
-        borderRadius: 0,
-        titleColor: "#ffffff",
-        subtitleColor: "#cccccc",
-        timerColor: "#ffffff",
-        padding: 12,
-        fontSize: 16,
-        layoutMode: "banner", // New flag for render
-        preset: "bold",
+        ...ANNOUNCEMENT_DEFAULTS
       };
 
   const [config, setConfig] = useState(initialConfig);
@@ -68,7 +74,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
     onSave({
       name,
       textTemplate: "",
-      position,
+      position: "header", // Internal flag, though actual placement is via CSS selector in config
       style: JSON.stringify(config),
     });
   };
@@ -76,107 +82,10 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
   const tabs = [
     { id: "content", content: "Content" },
     { id: "style", content: "Style" },
-    { id: "placement", content: "Placement" },
   ];
 
   // Mock preview time
   const [timeLeft] = useState({ d: "02", h: "14", m: "30", s: "15" });
-
-  // --- Style Presets (Aligned with Coupon Aesthetic) ---
-  const PRESETS = {
-    standard: {
-      backgroundColor: "#ffffff",
-      borderColor: "#e1e3e5",
-      titleColor: "#202223",
-      subtitleColor: "#6d7175",
-      timerColor: "#202223",
-      borderSize: 1,
-      borderRadius: 8,
-      padding: 12,
-      fontSize: 16,
-      typography: "Inter",
-      className: "",
-    },
-    neon: {
-      backgroundColor: "#000000",
-      borderColor: "#00ffff",
-      titleColor: "#00ffff",
-      subtitleColor: "#00cccc",
-      timerColor: "#ffffff",
-      borderSize: 1,
-      borderRadius: 4,
-      padding: 16,
-      fontSize: 18,
-      typography: "Monospace",
-      className: "rockit-timer-neon",
-    },
-    gold: {
-      backgroundColor: "linear-gradient(135deg, #bf953f, #fcf6ba, #b38728)",
-      borderColor: "#aa771c",
-      titleColor: "#3e2b00",
-      subtitleColor: "rgba(62, 43, 0, 0.8)",
-      timerColor: "#3e2b00",
-      borderSize: 1,
-      borderRadius: 12,
-      padding: 14,
-      fontSize: 16,
-      typography: "Serif",
-      className: "rockit-timer-gold",
-    },
-    glass: {
-      backgroundColor: "rgba(255, 255, 255, 0.15)",
-      borderColor: "rgba(255, 255, 255, 0.3)",
-      titleColor: "#000000",
-      subtitleColor: "#444444",
-      timerColor: "#000000",
-      borderSize: 1,
-      borderRadius: 16,
-      padding: 14,
-      fontSize: 15,
-      typography: "Outfit",
-      className: "rockit-timer-glass",
-    },
-    minimal: {
-      backgroundColor: "#ffffff",
-      borderColor: "#111111",
-      titleColor: "#111111",
-      subtitleColor: "#666666",
-      timerColor: "#111111",
-      borderSize: 1,
-      borderRadius: 0,
-      padding: 10,
-      fontSize: 14,
-      typography: "Outfit",
-      className: "rockit-timer-minimal-luxe",
-    },
-    announcement: {
-      backgroundColor: "#000000",
-      borderColor: "#000000",
-      titleColor: "#ffffff",
-      subtitleColor: "#cccccc",
-      timerColor: "#ffffff",
-      borderSize: 0,
-      borderRadius: 0,
-      padding: 10,
-      fontSize: 15,
-      typography: "Outfit",
-      className: "rockit-timer-bar",
-      cssSelector: "header, #shopify-section-header, .header-wrapper, .site-header",
-      embedPosition: "after",
-    },
-  };
-
-  const handlePresetChange = (presetKey) => {
-    const preset = PRESETS[presetKey];
-    if (!preset) return;
-    setConfig((prev) => ({
-      ...prev,
-      ...preset,
-      layoutMode: "banner",
-      preset: presetKey,
-    }));
-    if (onDirty) onDirty();
-  };
 
   const ColorInput = ({ label, value, onChange }) => (
     <div style={{ flex: 1 }}>
@@ -235,40 +144,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
   const renderStyleTab = () => (
     <BlockStack gap="400" className="animate-fade-in-up">
       <Box>
-        <InlineStack align="space-between">
-           <Text as="h2" variant="headingSm">Design Presets</Text>
-           <Button 
-             variant="primary"
-             tone="critical"
-             pressed={config.className === "rockit-timer-bar"} 
-             onClick={() => handlePresetChange("announcement")}
-           >
-             Mode: Announcement Bar ⚡
-           </Button>
-        </InlineStack>
-        <Box paddingBlockStart="200">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
-            {Object.keys(PRESETS).map(key => (
-              <div key={key} onClick={() => handlePresetChange(key)} style={{ 
-                  padding: "12px", borderRadius: "12px", 
-                  border: `2px solid ${config.preset === key ? "var(--p-color-border-interactive)" : "transparent"}`,
-                  background: "var(--p-color-bg-surface-secondary)",
-                  cursor: "pointer", textAlign: "center", transition: "all 0.2s"
-              }}>
-                <div style={{ width: "100%", height: "40px", borderRadius: "4px", marginBottom: "8px", overflow: "hidden", border: "1px solid #ddd" }}>
-                   <div style={{ width: "100%", height: "100%", background: PRESETS[key].backgroundColor, display: "flex", alignItems: "center", justifyContent: "center", color: PRESETS[key].titleColor, fontSize: "10px", fontWeight: "bold" }}>00:00</div>
-                </div>
-                <Text variant="bodyXs" fontWeight="medium">{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
-              </div>
-            ))}
-          </div>
-        </Box>
-      </Box>
-
-      <Divider />
-
-      <Box>
-        <Text as="h2" variant="headingSm">Manual Customization</Text>
+        <Text as="h2" variant="headingSm">Appearance</Text>
         <Box paddingBlockStart="200">
           <FormLayout>
              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
@@ -281,47 +157,11 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "16px" }}>
                <Select label="Typography" options={["Inter", "Roboto", "Monospace", "Serif", "Outfit"].map(f => ({ label: f, value: f }))} value={config.typography || "Inter"} onChange={(v) => handleConfigChange("typography", v)} />
                <RangeSlider label="Font Size" value={config.fontSize} onChange={(v) => handleConfigChange("fontSize", v)} min={12} max={32} output />
-               <RangeSlider label="Corner Radius" value={config.borderRadius} onChange={(v) => handleConfigChange("borderRadius", v)} min={0} max={30} output />
                <RangeSlider label="Inner Padding" value={config.padding} onChange={(v) => handleConfigChange("padding", v)} min={0} max={50} output />
              </div>
-
-             <Box paddingBlockStart="200">
-               <RangeSlider label="Border Width" value={config.borderSize} onChange={(v) => handleConfigChange("borderSize", v)} min={0} max={10} output />
-             </Box>
           </FormLayout>
         </Box>
       </Box>
-    </BlockStack>
-  );
-
-  const renderPlacementTab = () => (
-    <BlockStack gap="600" className="animate-fade-in-up">
-      <Card>
-        <BlockStack gap="300">
-          <Text as="h3" variant="headingMd">App Block (Recommended)</Text>
-          <Text as="p" tone="subdued">Use the theme editor to drag and drop the Timer.</Text>
-          <Button fullWidth url="https://admin.shopify.com/themes/current/editor?context=apps" external target="_top">Open theme editor</Button>
-        </BlockStack>
-      </Card>
-
-      <Card>
-        <BlockStack gap="400">
-          <Text as="h3" variant="headingMd">App Embed (Advanced)</Text>
-          <Button url="https://admin.shopify.com/themes/current/editor?context=apps&activateAppId=timer-theme-extension" external target="_top">Activate App Embed</Button>
-          <TextField label="CSS Selector" placeholder=".header-wrapper" value={config.cssSelector || ""} onChange={(v) => handleConfigChange("cssSelector", v)} autoComplete="off" monospaced />
-          <Select
-            label="Position"
-            options={[
-              { label: "Before element (Top)", value: "before" },
-              { label: "After element (Bottom)", value: "after" },
-              { label: "Inside (First child)", value: "first_child" },
-              { label: "Inside (Last child)", value: "last_child" },
-            ]}
-            value={config.embedPosition || "before"}
-            onChange={(v) => handleConfigChange("embedPosition", v)}
-          />
-        </BlockStack>
-      </Card>
     </BlockStack>
   );
 
@@ -335,7 +175,6 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
               <Box padding="500">
                 {selectedTab === 0 && renderContentTab()}
                 {selectedTab === 1 && renderStyleTab()}
-                {selectedTab === 2 && renderPlacementTab()}
               </Box>
             </Tabs>
           </Card>
@@ -351,12 +190,11 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
                   <div
                     style={{
                       background: config.backgroundColor,
-                      border: `solid ${config.borderSize}px ${config.borderColor}`,
-                      borderRadius: config.className === "rockit-timer-bar" ? "0px" : `${config.borderRadius}px`,
+                      borderTop: `solid ${config.borderSize || 0}px ${config.borderColor}`,
+                      borderBottom: `solid ${config.borderSize || 0}px ${config.borderColor}`,
                       padding: `${config.padding}px`,
                       color: config.titleColor,
                       fontFamily: config.typography || "Inter",
-                      boxShadow: config.className === "rockit-timer-bar" ? "none" : "0 4px 12px rgba(0,0,0,0.1)",
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
@@ -364,7 +202,6 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
                       width: "100%",
                       boxSizing: "border-box",
                       transition: "all 0.3s ease",
-                      backdropFilter: config.preset === "glass" ? "blur(10px)" : "none",
                     }}
                   >
                     <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>

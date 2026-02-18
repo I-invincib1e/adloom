@@ -87,9 +87,9 @@ export default function NewCouponPage() {
   const [offerTitle, setOfferTitle] = useState("");
   const [couponCode, setCouponCode] = useState("");
   const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState("00:00");
-  const [endDate, setEndDate] = useState("");
+  const [endDate, setEndDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [endTime, setEndTime] = useState("23:59");
   
   // Applies To State
@@ -206,6 +206,11 @@ export default function NewCouponPage() {
   };
 
   const handleSubmit = () => {
+    if (!startDate || !endDate) {
+      shopify.toast.show("Please select start and end dates", { isError: true });
+      return;
+    }
+
     const startDateTime = `${startDate}T${startTime}:00`;
     const endDateTime = `${endDate}T${endTime}:00`;
 

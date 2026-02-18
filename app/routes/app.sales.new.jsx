@@ -399,6 +399,16 @@ export default function NewSale() {
       return;
     }
 
+    if (!startDate || !startTime) {
+      shopify.toast.show("Start date and time are required.", { isError: true });
+      return;
+    }
+
+    if (setEndTimer && (!endDate || !endTime)) {
+      shopify.toast.show("End date and time are required when 'Set end date' is checked.", { isError: true });
+      return;
+    }
+
     const startDateTime = `${startDate}T${startTime}:00`;
     const endDateTime = setEndTimer ? `${endDate}T${endTime}:00` : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
 
