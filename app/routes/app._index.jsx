@@ -197,7 +197,11 @@ export default function Index() {
 
   useEffect(() => {
     if (actionData?.error) {
-      shopify.toast.show(actionData.error, { isError: true });
+       if (actionData.error.includes("Conflict detected")) {
+          setConflictError(actionData.error);
+       } else {
+          shopify.toast.show(actionData.error, { isError: true });
+       }
     }
   }, [actionData, shopify]);
 
@@ -289,6 +293,7 @@ export default function Index() {
   // Confirmation modal state
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null); 
+  const [conflictError, setConflictError] = useState(null);
 
   // Tab counts
   const counts = useMemo(() => ({
@@ -577,6 +582,23 @@ export default function Index() {
               </InlineStack>
             )}
           </BlockStack>
+        </Modal.Section>
+      </Modal>
+
+      {/* Conflict Error Modal */}
+      <Modal
+        open={!!conflictError}
+        onClose={() => setConflictError(null)}
+        title="Scheduling Conflict"
+        primaryAction={{
+          content: "Understood",
+          onAction: () => setConflictError(null),
+        }}
+      >
+        <Modal.Section>
+          <Banner tone="warning">
+            <p>{conflictError}</p>
+          </Banner>
         </Modal.Section>
       </Modal>
     </Page>
