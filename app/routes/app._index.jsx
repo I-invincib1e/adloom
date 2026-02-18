@@ -1,6 +1,7 @@
 import { json } from "@remix-run/node";
 import { useLoaderData, useActionData, useNavigation, useSubmit, useNavigate, useSearchParams, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { XIcon, CheckIcon } from "@shopify/polaris-icons";
 import {
   Page,
   Layout,
@@ -51,12 +52,19 @@ export async function loader({ request }) {
   const { authenticate } = await import("../shopify.server");
   const { session } = await authenticate.admin(request);
   const { getSales } = await import("../models/sale.server");
+  const { getTimers } = await import("../models/timer.server");
+  const { getCoupons } = await import("../models/coupon.server");
+  
   try {
-    const sales = await getSales(session.shop);
-    return json({ sales });
+    const [sales, timers, coupons] = await Promise.all([
+      getSales(session.shop),
+      getTimers(session.shop),
+      getCoupons(session.shop)
+    ]);
+    return json({ sales, timers, coupons });
   } catch (error) {
     console.error("Loader failed:", error);
-    throw new Response("Failed to load sales", { status: 500 });
+    throw new Response("Failed to load dashboard data", { status: 500 });
   }
 }
 
@@ -130,7 +138,7 @@ export async function action({ request }) {
 }
 
 export default function Index() {
-  const { sales = [] } = useLoaderData() || {};
+  const { sales = [], timers = [], coupons = [] } = useLoaderData() || {};
   const actionData = useActionData();
   const navigate = useNavigate();
   const submit = useSubmit();
@@ -148,41 +156,43 @@ export default function Index() {
   }, []);
 
   const milestones = useMemo(() => {
-    const hasSales = sales.length > 0;
-    // We'd ideally check for timers/coupons too, but for simplicity:
     return [
       {
-        id: "embed",
-        label: "Activate Storefront",
-        done: false, // In a real app, we'd check shop settings via API
-        actionLabel: "Activate Now",
+        id: "placement",
+        label: "Customize Placement",
+        done: false, // Always false initially, or check if theme app extension is active (hard to do from here)
+        actionLabel: "Open Editor",
         url: "https://admin.shopify.com/themes/current/editor",
         external: true,
-        target: "_top"
+        target: "_top",
+        description: "Position your timers and offers in the theme editor."
       },
       {
         id: "sale",
         label: "Create Your First Sale",
-        done: hasSales,
+        done: sales.length > 0,
         actionLabel: "Create Sale",
-        onAction: () => navigate("/app/sales/new")
+        onAction: () => navigate("/app/sales/new"),
+        description: "Launch a store-wide or collection-specific sale."
       },
       {
         id: "timer",
         label: "Add a Countdown Timer",
-        done: false,
-        actionLabel: "Setup Timer",
-        onAction: () => navigate("/app/timers/new")
+        done: timers.length > 0,
+        actionLabel: "Create Timer",
+        onAction: () => navigate("/app/timers/new"),
+        description: "Drive urgency with a countdown on your products."
       },
       {
-        id: "pricing",
-        label: "Choose a Growth Plan",
-        done: false,
-        actionLabel: "View Plans",
-        onAction: () => navigate("/app/pricing")
+        id: "offer",
+        label: "Create an Offer",
+        done: coupons.length > 0,
+        actionLabel: "Create Offer",
+        onAction: () => navigate("/app/coupons/new"), // Assuming coupons route
+        description: "Set up a coupon code or special deal."
       }
     ];
-  }, [sales, navigate]);
+  }, [sales, timers, coupons, navigate]);
 
   const progress = Math.round((milestones.filter(m => m.done).length / milestones.length) * 100);
 
@@ -214,6 +224,11 @@ export default function Index() {
     });
   }, [setSearchParams]);
 
+  const handleDismissTrack = () => {
+    setTrackDismissed(true);
+    localStorage.setItem("rockit_track_dismissed", "true");
+  };
+
   const LaunchTrack = () => (
     <div className="animate-fade-in-up stagger-1">
       <Card padding="500">
@@ -221,12 +236,15 @@ export default function Index() {
         <InlineStack align="space-between" verticalAlign="center">
           <BlockStack gap="100">
             <Text as="h2" variant="headingLg" fontWeight="bold">Launch Track</Text>
-            <Text as="p" variant="bodyMd" tone="subdued">Complete these steps to start boosting your conversions.</Text>
+            <Text as="p" variant="bodyMd" tone="subdued">Complete these steps to boost your sales.</Text>
           </BlockStack>
-          <div style={{ textAlign: "right" }}>
-            <Text as="p" variant="heading2xl" fontWeight="bold" tone="highlight">{progress}%</Text>
-            <Text as="p" variant="bodyxs" tone="subdued" fontWeight="medium">COMPLETED</Text>
-          </div>
+          <InlineStack gap="400" align="center">
+            <div style={{ textAlign: "right" }}>
+                <Text as="p" variant="heading2xl" fontWeight="bold" tone="highlight">{progress}%</Text>
+                <Text as="p" variant="bodyxs" tone="subdued" fontWeight="medium">COMPLETED</Text>
+            </div>
+            <Button variant="plain" icon={XIcon} onClick={handleDismissTrack} accessibilityLabel="Dismiss" />
+          </InlineStack>
         </InlineStack>
 
         <div style={{ height: "8px", background: "#f3f4f6", borderRadius: "9999px", overflow: "hidden" }}>
@@ -245,30 +263,32 @@ export default function Index() {
               padding: "16px", 
               borderRadius: "12px", 
               background: m.done ? "#f0fdf4" : "#ffffff",
-              border: `1px solid ${m.done ? "#bbf7d0" : "#f3f4f6"}`,
+              border: `1px solid ${m.done ? "#bbf7d0" : "#e5e7eb"}`,
               display: "flex",
               flexDirection: "column",
               gap: "12px",
               justifyContent: "space-between",
               transition: "all 0.2s ease"
             }}>
-              <BlockStack gap="100">
+              <BlockStack gap="200">
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                    <div style={{ 
-                      width: "18px", 
-                      height: "18px", 
+                      width: "20px", 
+                      height: "20px", 
                       borderRadius: "50%", 
-                      background: m.done ? "#22c55e" : "#e5e7eb",
+                      background: m.done ? "#22c55e" : "#f3f4f6",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       color: "white",
-                      fontSize: "10px"
+                      fontSize: "12px",
+                      flexShrink: 0
                    }}>
-                     {m.done ? "✓" : ""}
+                     {m.done ? <Icon source={CheckIcon} tone="white" /> : null}
                    </div>
-                   <Text as="span" variant="bodySm" fontWeight={m.done ? "bold" : "medium"}>{m.label}</Text>
+                   <Text as="span" variant="bodySm" fontWeight={m.done ? "bold" : "semibold"}>{m.label}</Text>
                 </div>
+                <Text as="p" variant="bodyXs" tone="subdued">{m.description}</Text>
               </BlockStack>
               {!m.done && (
                  <Button 
