@@ -29,6 +29,7 @@ import {
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { SearchIcon } from "@shopify/polaris-icons";
 import { StrategyExample } from "../components/StrategyExample";
+import { DirtyStateModal } from "../components/DirtyStateModal";
 
 export async function loader({ request, params }) {
   console.log("Loading Sale:", params.id); // Debug Log
@@ -254,6 +255,10 @@ export default function EditSale() {
   const actionData = useActionData();
   const navigation = useNavigation();
 
+  // --- Unsaved changes guard ---
+  const [isDirty, setIsDirty] = useState(false);
+  const dirty = (setter) => (val) => { setIsDirty(true); setter(val); };
+
   useEffect(() => {
     if (actionData?.errors?.base) {
       shopify.toast.show(actionData.errors.base, { isError: true });
@@ -395,6 +400,7 @@ export default function EditSale() {
         },
       ]}
     >
+      <DirtyStateModal isDirty={isDirty} />
       <Layout>
         <Layout.Section>
           <div className="animate-fade-in-up stagger-1">
@@ -432,7 +438,7 @@ export default function EditSale() {
                       label="Title"
                       labelHidden
                       value={title}
-                      onChange={setTitle}
+                      onChange={dirty(setTitle)}
                       autoComplete="off"
                       maxLength={255}
                       showCharacterCount
@@ -466,7 +472,7 @@ export default function EditSale() {
                             labelHidden
                             type="number"
                             value={value}
-                            onChange={setValue}
+                            onChange={dirty(setValue)}
                             suffix={discountType === "PERCENTAGE" ? "%" : ""}
                             autoComplete="off"
                             error={actionData?.errors?.value}

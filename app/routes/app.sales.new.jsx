@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { json, redirect } from "@remix-run/node";
 import { useActionData, useSubmit, useNavigation, useLoaderData, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
+import { DirtyStateModal } from "../components/DirtyStateModal";
 import { authenticate } from "../shopify.server";
 import { createSale, applySale } from "../models/sale.server"; 
 import { getTimers } from "../models/timer.server";
@@ -286,19 +287,6 @@ export default function NewSale() {
 
   // --- Unsaved changes guard ---
   const [isDirty, setIsDirty] = useState(false);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (isDirty) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [isDirty]);
-
-  // Wrap setters to mark dirty
   const dirty = (setter) => (val) => { setIsDirty(true); setter(val); };
 
   const [selectedCollections, setSelectedCollections] = useState([]);
@@ -451,6 +439,7 @@ export default function NewSale() {
         disabled: !allowed,
       }}
     >
+      <DirtyStateModal isDirty={isDirty} />
       {!allowed && (
         <Layout>
           <Layout.Section>

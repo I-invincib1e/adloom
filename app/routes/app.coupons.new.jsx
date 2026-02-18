@@ -5,6 +5,7 @@ import { authenticate } from "../shopify.server";
 import { createCoupon } from "../models/coupon.server";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { checkLimit } from "../models/billing.server";
+import { DirtyStateModal } from "../components/DirtyStateModal";
 import {
   Page,
   Layout,
@@ -77,6 +78,10 @@ export default function NewCouponPage() {
   const navigation = useNavigation();
   const { allowed } = useLoaderData();
   const isLoading = navigation.state === "submitting";
+
+  const [isDirty, setIsDirty] = useState(false);
+  // Wrap setters to mark dirty
+  const dirty = (setter) => (val) => { setIsDirty(true); setter(val); };
 
   const [selectedTab, setSelectedTab] = useState(0);
   const [offerTitle, setOfferTitle] = useState("");
@@ -173,15 +178,15 @@ export default function NewCouponPage() {
   };
 
   const handlePresetChange = (presetKey) => {
-    setStylePreset(presetKey);
+    dirty(setStylePreset)(presetKey);
     const p = PRESETS[presetKey];
-    setStyleConfig(prev => ({ ...prev, ...p }));
+    dirty(setStyleConfig)(prev => ({ ...prev, ...p }));
   };
 
   const selectProducts = async () => {
     const response = await shopify.resourcePicker({ type: "product", multiple: true });
     if (response) {
-      setSelectedProducts(response.map(p => ({
+      dirty(setSelectedProducts)(response.map(p => ({
         productId: p.id,
         productTitle: p.title,
         image: p.images[0]?.originalSrc || null,
@@ -192,7 +197,7 @@ export default function NewCouponPage() {
   const selectCollections = async () => {
     const response = await shopify.resourcePicker({ type: "collection", multiple: true });
     if (response) {
-      setSelectedCollections(response.map(c => ({
+      dirty(setSelectedCollections)(response.map(c => ({
         id: c.id,
         title: c.title,
         image: c.image?.originalSrc || null,
@@ -274,7 +279,7 @@ export default function NewCouponPage() {
           <TextField
               label="Offer title"
               value={offerTitle}
-              onChange={setOfferTitle}
+              onChange={dirty(setOfferTitle)}
               autoComplete="off"
               placeholder="e.g. Buy 1 Get 1 Free"
               error={actionData?.errors?.offerTitle}
@@ -303,12 +308,12 @@ export default function NewCouponPage() {
           <Text as="h2" variant="headingSm">Schedule</Text>
           <FormLayout>
             <FormLayout.Group>
-               <TextField label="Start date" type="date" value={startDate} onChange={setStartDate} autoComplete="off" />
-               <TextField label="Start time" type="time" value={startTime} onChange={setStartTime} autoComplete="off" />
+               <TextField label="Start date" type="date" value={startDate} onChange={dirty(setStartDate)} autoComplete="off" />
+               <TextField label="Start time" type="time" value={startTime} onChange={dirty(setStartTime)} autoComplete="off" />
             </FormLayout.Group>
             <FormLayout.Group>
-               <TextField label="End date" type="date" value={endDate} onChange={setEndDate} autoComplete="off" />
-               <TextField label="End time" type="time" value={endTime} onChange={setEndTime} autoComplete="off" />
+               <TextField label="End date" type="date" value={endDate} onChange={dirty(setEndDate)} autoComplete="off" />
+               <TextField label="End time" type="time" value={endTime} onChange={dirty(setEndTime)} autoComplete="off" />
             </FormLayout.Group>
           </FormLayout>
         </BlockStack>
@@ -319,7 +324,7 @@ export default function NewCouponPage() {
           <Text as="h2" variant="headingSm">Applies To</Text>
           <PremiumToggle
             value={appliesToType}
-            onChange={setAppliesToType}
+            onChange={dirty(setAppliesToType)}
             options={[
               { label: "Products", value: "products" },
               { label: "Collections", value: "collections" },
@@ -333,7 +338,7 @@ export default function NewCouponPage() {
             {appliesToType === "products" && (
               <BlockStack gap="300">
                 <Button onClick={selectProducts}>Browse Products</Button>
-                <ResourceScrollArea items={selectedProducts} onRemove={(id) => setSelectedProducts(prev => prev.filter(p => p.productId !== id))} idKey="productId" titleKey="productTitle" />
+                <ResourceScrollArea items={selectedProducts} onRemove={(id) => dirty(setSelectedProducts)(prev => prev.filter(p => p.productId !== id))} idKey="productId" titleKey="productTitle" />
               </BlockStack>
             )}
             {appliesToType === "collections" && (
@@ -422,19 +427,19 @@ export default function NewCouponPage() {
             <Text as="h2" variant="headingSm">Manual Customization</Text>
             <FormLayout>
               <FormLayout.Group>
-                 <ColorInput label="Background" value={styleConfig.backgroundColor} onChange={(v) => setStyleConfig(s => ({ ...s, backgroundColor: v }))} />
-                 <ColorInput label="Border" value={styleConfig.borderColor} onChange={(v) => setStyleConfig(s => ({ ...s, borderColor: v }))} />
+                 <ColorInput label="Background" value={styleConfig.backgroundColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, backgroundColor: v }))} />
+                 <ColorInput label="Border" value={styleConfig.borderColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, borderColor: v }))} />
               </FormLayout.Group>
               <FormLayout.Group>
-                 <ColorInput label="Text Color" value={styleConfig.textColor} onChange={(v) => setStyleConfig(s => ({ ...s, textColor: v }))} />
-                 <ColorInput label="Code Color" value={styleConfig.codeColor} onChange={(v) => setStyleConfig(s => ({ ...s, codeColor: v }))} />
+                 <ColorInput label="Text Color" value={styleConfig.textColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, textColor: v }))} />
+                 <ColorInput label="Code Color" value={styleConfig.codeColor} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, codeColor: v }))} />
               </FormLayout.Group>
               <FormLayout.Group>
                 <Select
                   label="Typography"
                   options={["Inter", "Roboto", "Monospace", "Serif", "Outfit"].map(f => ({ label: f, value: f }))}
                   value={styleConfig.typography}
-                  onChange={(v) => setStyleConfig(s => ({ ...s, typography: v }))}
+                  onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, typography: v }))}
                 />
                 <Select
                   label="Border Style"
@@ -445,19 +450,19 @@ export default function NewCouponPage() {
                     { label: "Double", value: "double" },
                   ]}
                   value={styleConfig.borderStyle}
-                  onChange={(v) => setStyleConfig(s => ({ ...s, borderStyle: v }))}
+                  onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, borderStyle: v }))}
                 />
               </FormLayout.Group>
               <RangeSlider
                 label="Corner Radius"
                 value={styleConfig.borderRadius}
-                onChange={(v) => setStyleConfig(s => ({ ...s, borderRadius: v }))}
+                onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, borderRadius: v }))}
                 min={0} max={30} output
               />
               <RangeSlider
                 label="Font Size"
                 value={styleConfig.fontSize}
-                onChange={(v) => setStyleConfig(s => ({ ...s, fontSize: v }))}
+                onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, fontSize: v }))}
                 min={12} max={24} output
               />
             </FormLayout>
@@ -468,6 +473,7 @@ export default function NewCouponPage() {
 
   return (
     <Page title="Advanced Offer Builder" backAction={{ url: "/app/coupons" }}>
+      <DirtyStateModal isDirty={isDirty} />
       {!allowed && <Banner tone="warning" title="Limit Reached" marginBottom="400">Upgrade to create more offers.</Banner>}
       
       <Layout>

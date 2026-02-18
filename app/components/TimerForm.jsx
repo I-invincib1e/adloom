@@ -15,7 +15,7 @@ import {
   Banner,
 } from "@shopify/polaris";
 
-export function TimerForm({ timer, onSave, isLoading, disabled }) {
+export function TimerForm({ timer, onSave, isLoading, disabled, onDirty }) {
   // --- State ---
   const [name, setName] = useState(timer?.name || "");
   const [position, setPosition] = useState(timer?.position || "below_price");
@@ -53,6 +53,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
 
   const handleConfigChange = (key, value) => {
     setConfig((prev) => ({ ...prev, [key]: value }));
+    if (onDirty) onDirty();
   };
 
   const handleLabelChange = (key, value) => {
@@ -60,6 +61,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
       ...prev,
       labels: { ...prev.labels, [key]: value },
     }));
+    if (onDirty) onDirty();
   };
 
   const handleSubmit = () => {
@@ -171,6 +173,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
       layoutMode: "banner",
       preset: presetKey,
     }));
+    if (onDirty) onDirty();
   };
 
   const ColorInput = ({ label, value, onChange }) => (
@@ -200,7 +203,7 @@ export function TimerForm({ timer, onSave, isLoading, disabled }) {
       <TextField
         label="Internal Name"
         value={name}
-        onChange={setName}
+        onChange={(v) => { setName(v); if(onDirty) onDirty(); }}
         autoComplete="off"
         maxLength={255}
         helpText="Only visible to you in the admin."

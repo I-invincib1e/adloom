@@ -9,6 +9,7 @@ import {
 import { authenticate } from "../shopify.server";
 import { getCoupon, updateCoupon } from "../models/coupon.server";
 import { useAppBridge } from "@shopify/app-bridge-react";
+import { DirtyStateModal } from "../components/DirtyStateModal";
 import {
   Page,
   Layout,
@@ -109,6 +110,9 @@ export default function EditCouponPage() {
   const actionData = useActionData();
   const navigation = useNavigation();
   const isLoading = navigation.state === "submitting";
+
+  const [isDirty, setIsDirty] = useState(false);
+  const dirty = (setter) => (val) => { setIsDirty(true); setter(val); };
 
   const [selectedTab, setSelectedTab] = useState(0);
 
@@ -231,9 +235,9 @@ export default function EditCouponPage() {
   };
 
   const handlePresetChange = (presetKey) => {
-    setStylePreset(presetKey);
+    dirty(setStylePreset)(presetKey);
     const p = PRESETS[presetKey];
-    setStyleConfig(prev => ({ ...prev, ...p }));
+    dirty(setStyleConfig)(prev => ({ ...prev, ...p }));
   };
 
   const selectProducts = async () => {
@@ -329,9 +333,9 @@ export default function EditCouponPage() {
       <Card>
         <BlockStack gap="400">
           <Text as="h2" variant="headingSm">Offer Details</Text>
-          <TextField label="Offer title" value={offerTitle} onChange={setOfferTitle} autoComplete="off" placeholder="e.g. Buy 1 Get 1 Free" />
-          <TextField label="Coupon code" value={couponCode} onChange={setCouponCode} autoComplete="off" placeholder="e.g. BYG1" monospaced />
-          <TextField label="Description (optional)" value={description} onChange={setDescription} autoComplete="off" multiline={2} />
+          <TextField label="Offer title" value={offerTitle} onChange={dirty(setOfferTitle)} autoComplete="off" placeholder="e.g. Buy 1 Get 1 Free" />
+          <TextField label="Coupon code" value={couponCode} onChange={dirty(setCouponCode)} autoComplete="off" placeholder="e.g. BYG1" monospaced />
+          <TextField label="Description (optional)" value={description} onChange={dirty(setDescription)} autoComplete="off" multiline={2} />
         </BlockStack>
       </Card>
 
@@ -340,12 +344,12 @@ export default function EditCouponPage() {
           <Text as="h2" variant="headingSm">Schedule</Text>
           <FormLayout>
             <FormLayout.Group>
-               <TextField label="Start date" type="date" value={startDate} onChange={setStartDate} autoComplete="off" />
-               <TextField label="Start time" type="time" value={startTime} onChange={setStartTime} autoComplete="off" />
+               <TextField label="Start date" type="date" value={startDate} onChange={dirty(setStartDate)} autoComplete="off" />
+               <TextField label="Start time" type="time" value={startTime} onChange={dirty(setStartTime)} autoComplete="off" />
             </FormLayout.Group>
             <FormLayout.Group>
-               <TextField label="End date" type="date" value={endDate} onChange={setEndDate} autoComplete="off" />
-               <TextField label="End time" type="time" value={endTime} onChange={setEndTime} autoComplete="off" />
+               <TextField label="End date" type="date" value={endDate} onChange={dirty(setEndDate)} autoComplete="off" />
+               <TextField label="End time" type="time" value={endTime} onChange={dirty(setEndTime)} autoComplete="off" />
             </FormLayout.Group>
           </FormLayout>
         </BlockStack>
@@ -453,8 +457,8 @@ export default function EditCouponPage() {
                  <ColorInput label="Code Color" value={styleConfig.codeColor} onChange={(v) => setStyleConfig(s => ({ ...s, codeColor: v }))} />
               </FormLayout.Group>
               <FormLayout.Group>
-                <Select label="Typography" options={["Inter", "Roboto", "Monospace", "Serif", "Outfit"].map(f => ({ label: f, value: f }))} value={styleConfig.typography} onChange={(v) => setStyleConfig(s => ({ ...s, typography: v }))} />
-                <Select label="Border Style" options={[{ label: "Solid", value: "solid" }, { label: "Dashed", value: "dashed" }, { label: "Dotted", value: "dotted" }, { label: "Double", value: "double" }]} value={styleConfig.borderStyle} onChange={(v) => setStyleConfig(s => ({ ...s, borderStyle: v }))} />
+                <Select label="Typography" options={["Inter", "Roboto", "Monospace", "Serif", "Outfit"].map(f => ({ label: f, value: f }))} value={styleConfig.typography} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, typography: v }))} />
+                <Select label="Border Style" options={[{ label: "Solid", value: "solid" }, { label: "Dashed", value: "dashed" }, { label: "Dotted", value: "dotted" }, { label: "Double", value: "double" }]} value={styleConfig.borderStyle} onChange={(v) => dirty(setStyleConfig)(s => ({ ...s, borderStyle: v }))} />
               </FormLayout.Group>
               <RangeSlider label="Corner Radius" value={styleConfig.borderRadius} onChange={(v) => setStyleConfig(s => ({ ...s, borderRadius: v }))} min={0} max={30} output />
               <RangeSlider label="Font Size" value={styleConfig.fontSize} onChange={(v) => setStyleConfig(s => ({ ...s, fontSize: v }))} min={12} max={24} output />
@@ -466,6 +470,7 @@ export default function EditCouponPage() {
 
   return (
     <Page title="Edit Offer" backAction={{ url: "/app/coupons" }}>
+      <DirtyStateModal isDirty={isDirty} />
       <Layout>
         <Layout.Section>
           {actionData?.success && <Banner tone="success" title={actionData.message} marginBottom="400" />}

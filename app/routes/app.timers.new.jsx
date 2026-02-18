@@ -4,6 +4,8 @@ import { authenticate } from "../shopify.server";
 import { checkLimit } from "../models/billing.server";
 import { createTimer } from "../models/timer.server";
 import { TimerForm } from "../components/TimerForm";
+import { DirtyStateModal } from "../components/DirtyStateModal";
+import { useState } from "react";
 import { Page, Layout, Banner, Button } from "@shopify/polaris";
 
 export async function loader({ request }) {
@@ -30,6 +32,8 @@ export default function NewTimerPage() {
   const { allowed } = useLoaderData();
   const isLoading = nav.state === "submitting";
 
+  const [isDirty, setIsDirty] = useState(false);
+
   const handleSave = (data) => {
     submit(data, { method: "post", encType: "application/json" });
   };
@@ -45,7 +49,8 @@ export default function NewTimerPage() {
           </Layout.Section>
         </Layout>
       )}
-      <TimerForm onSave={handleSave} isLoading={isLoading} disabled={!allowed} />
+      <DirtyStateModal isDirty={isDirty} />
+      <TimerForm onSave={handleSave} isLoading={isLoading} disabled={!allowed} onDirty={() => setIsDirty(true)} />
     </Page>
   );
 }

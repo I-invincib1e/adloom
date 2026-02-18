@@ -4,6 +4,7 @@ import { authenticate } from "../shopify.server";
 import { getTimer, updateTimer, deleteTimer, duplicateTimer } from "../models/timer.server";
 import { checkLimit } from "../models/billing.server";
 import { TimerForm } from "../components/TimerForm";
+import { DirtyStateModal } from "../components/DirtyStateModal";
 import { Page, Modal, Text, BlockStack } from "@shopify/polaris";
 import { useState } from "react";
 
@@ -52,6 +53,7 @@ export default function EditTimerPage() {
   const isLoading = nav.state === "submitting";
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   const handleSave = (data) => {
     submit(data, { method: "post", encType: "application/json" });
@@ -82,7 +84,8 @@ export default function EditTimerPage() {
         },
       ]}
     >
-      <TimerForm timer={timer} onSave={handleSave} isLoading={isLoading} />
+      <DirtyStateModal isDirty={isDirty} />
+      <TimerForm timer={timer} onSave={handleSave} isLoading={isLoading} onDirty={() => setIsDirty(true)} />
 
       <Modal
         open={deleteModalOpen}

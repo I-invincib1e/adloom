@@ -36,7 +36,7 @@ export async function action({ request }) {
    * 2. The AppProvider in root.jsx will handle the session token handshake on return.
    */
   const appUrl = process.env.SHOPIFY_APP_URL || url.origin;
-  const returnUrl = `${appUrl}/app/pricing?celebrate=true&plan=${plan}`;
+  const returnUrl = `${appUrl}/app/pricing?upgraded=true&plan=${plan}`; // Use upgraded=true per new flow
 
   console.log(`[Billing Debug] SHOPIFY_APP_URL: ${process.env.SHOPIFY_APP_URL}`);
   console.log(`[Billing Debug] Requesting plan: ${plan}, isTest: ${isTest}, returnUrl: ${returnUrl}`);
@@ -270,16 +270,23 @@ function PlanBenefits({ planId }) {
   );
 }
 
+
 function CelebrationModal({ isOpen, onClose, planName }) {
   return (
     <Modal
       open={isOpen}
       onClose={onClose}
-      title="Upgrade Successful!"
+      title="🎉 You're Upgraded!"
       primaryAction={{
-        content: "Explore My Benefits",
-        onAction: onClose,
+        content: "Create Your First Sale →",
+        onAction: () => window.location.href = "/app/sales/new",
       }}
+      secondaryActions={[
+        {
+          content: "Visit Help Center",
+          onAction: () => window.location.href = "/app/help",
+        }
+      ]}
     >
       <Modal.Section>
         <BlockStack gap="500">
@@ -296,27 +303,22 @@ function CelebrationModal({ isOpen, onClose, planName }) {
               </div>
               <BlockStack gap="100" align="center">
                 <Text as="h2" variant="headingLg" fontWeight="bold">
-                  You're now on the {planName} Plan!
+                  Thank you for choosing Loom!
                 </Text>
                 <Text as="p" variant="bodyMd" tone="subdued" alignment="center">
-                  Your store is now equipped with enterprise-level tools. Let's see how much more you can achieve!
+                  Your <Text as="span" fontWeight="bold">{planName} Plan</Text> is now active. You have unlocked all premium features to validy boost your sales.
                 </Text>
               </BlockStack>
             </BlockStack>
           </Box>
 
-          <BlockStack gap="300">
-            <Text as="h3" variant="headingMd" fontWeight="semibold">
-              Your Unlocked Potential:
-            </Text>
-            <PlanBenefits planId={planName} />
-          </BlockStack>
-
           <Divider />
 
-          <Text as="p" variant="bodySm" tone="subdued" alignment="center">
-            Your billing has been updated. New limits are active immediately.
-          </Text>
+          <BlockStack gap="200" align="center">
+             <Text as="p" variant="bodySm" tone="subdued" alignment="center">
+               Need assistance? <Button variant="plain" url="mailto:Hello@adloomx.com">Hello@adloomx.com</Button>
+             </Text>
+          </BlockStack>
         </BlockStack>
       </Modal.Section>
     </Modal>
@@ -333,12 +335,15 @@ export default function PricingPage() {
   const [showCelebrate, setShowCelebrate] = useState(false);
 
   useEffect(() => {
-    if (celebrate) {
+    // Check for both 'celebrate' (legacy) and 'upgraded' (new)
+    const params = new URLSearchParams(location.search);
+    if (celebrate || params.get('upgraded') === 'true') {
       setShowCelebrate(true);
+      // Clean URL
       const newUrl = location.pathname;
       window.history.replaceState({}, "", newUrl);
     }
-  }, [celebrate, location.pathname]);
+  }, [celebrate, location.search, location.pathname]);
 
   const handleCloseCelebration = () => {
     setShowCelebrate(false);
