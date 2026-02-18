@@ -1,3 +1,52 @@
+import { json } from "@remix-run/node";
+import { useLoaderData, useActionData, useNavigation, useSubmit, useNavigate, useSearchParams, useRouteError, isRouteErrorResponse } from "@remix-run/react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  Page,
+  Layout,
+  Card,
+  Button,
+  BlockStack,
+  InlineStack,
+  Text,
+  Badge,
+  IndexTable,
+  Tooltip,
+  EmptyState,
+  Banner,
+  Modal,
+  Spinner,
+  Tabs,
+  useIndexResourceState
+} from "@shopify/polaris";
+import { useAppBridge } from "@shopify/app-bridge-react";
+
+function timeAgo(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+  
+  if (seconds < 0) {
+     // Future
+     const absSeconds = Math.abs(seconds);
+     if (absSeconds < 60) return "In a few seconds";
+     const minutes = Math.floor(absSeconds / 60);
+     if (minutes < 60) return `In ${minutes}m`;
+     const hours = Math.floor(minutes / 60);
+     if (hours < 24) return `In ${hours}h`;
+     const days = Math.floor(hours / 24);
+     return `In ${days}d`;
+  }
+
+  if (seconds < 60) return "Just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 export async function loader({ request }) {
   const { authenticate } = await import("../shopify.server");
   const { session } = await authenticate.admin(request);
