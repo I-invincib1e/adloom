@@ -87,13 +87,29 @@ export async function action({ request }) {
       const variantIds = (sale.items || []).map(i => i.variantId);
 
       // 1. Check for product overlaps
-      const overlapCheck = await checkItemOverlaps(session.shop, variantIds, saleId);
+      // Passing startTime/endTime is critical for checking conflicts with other scheduled sales
+      const overlapCheck = await checkItemOverlaps(
+          session.shop, 
+          variantIds, 
+          saleId, 
+          sale.startTime, 
+          sale.endTime, 
+          sale.timerId
+      );
+
       if (!overlapCheck.ok) {
           return json({ success: false, error: overlapCheck.message }, { status: 400 });
       }
       
       // 2. Check global variant limit
-      const variantLimitCheck = await checkGlobalVariantLimit(request, variantIds, saleId);
+      const variantLimitCheck = await checkGlobalVariantLimit(
+          session.shop, // Updated signature: (shop, variantIds, excludeSaleId, start, end)
+          variantIds, 
+          saleId,
+          sale.startTime,
+          sale.endTime
+      );
+
       if (!variantLimitCheck.ok) {
            return json({ success: false, error: variantLimitCheck.message }, { status: 400 });
       }
