@@ -5,7 +5,9 @@ import {
   Scripts,
   ScrollRestoration,
   useLoaderData,
+  useRouteError,
 } from "@remix-run/react";
+import { boundary } from "@shopify/shopify-app-remix/server";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import premiumStyles from "./styles/premium.css?url";
 
@@ -16,6 +18,8 @@ export const links = () => [
 export const loader = async ({ request }) => {
   return { apiKey: process.env.SHOPIFY_API_KEY || "" };
 };
+
+export const headers = (headersArgs) => boundary.headers(headersArgs);
 
 export default function App() {
   const { apiKey } = useLoaderData();
@@ -30,7 +34,6 @@ export default function App() {
           href="https://cdn.shopify.com/static/fonts/inter/v4/styles.css"
         />
         <meta name="shopify-api-key" content={apiKey} />
-        <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
         <Meta />
         <Links />
       </head>
@@ -43,4 +46,8 @@ export default function App() {
       </body>
     </html>
   );
+}
+
+export function ErrorBoundary() {
+  return boundary.error(useRouteError());
 }
