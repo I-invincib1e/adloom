@@ -249,15 +249,15 @@ function PlanCard({ plan, currentPlan }) {
       
       <Box padding="600" style={{ flexGrow: 1 }}>
         <BlockStack gap="600">
-          <BlockStack gap="400">
-            <BlockStack gap="100">
-              <Text as="h3" variant="headingMd" fontWeight="bold">
+          <BlockStack gap="400" align="center">
+            <BlockStack gap="100" align="center">
+              <Text as="h3" variant="headingMd" fontWeight="bold" alignment="center">
                 {plan.name}
               </Text>
-              <Text as="p" variant="bodySm" tone="subdued" fontWeight="medium">{plan.description}</Text>
+              <Text as="p" variant="bodySm" tone="subdued" fontWeight="medium" alignment="center">{plan.description}</Text>
             </BlockStack>
             
-            <div style={{ display: "flex", gap: "4px", alignItems: "baseline", marginTop: "4px" }}>
+            <div style={{ display: "flex", gap: "4px", alignItems: "baseline", marginTop: "4px", justifyContent: "center" }}>
               <span style={{ fontSize: "32px", fontWeight: "800", letterSpacing: "-0.02em" }}>{plan.price}</span>
               {plan.period && <Text as="span" variant="bodySm" tone="subdued" fontWeight="medium">{plan.period}</Text>}
             </div>
