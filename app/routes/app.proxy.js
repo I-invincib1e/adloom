@@ -1,8 +1,8 @@
 import { json } from "@remix-run/node";
-import { authenticate } from "../shopify.server";
-import db from "../db.server";
 
 export async function loader({ request }) {
+  const { authenticate } = await import("../shopify.server");
+  const db = (await import("../db.server")).default;
   const { session } = await authenticate.public.appProxy(request);
   const shop = session.shop;
   

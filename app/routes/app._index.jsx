@@ -1,55 +1,7 @@
-import { json } from "@remix-run/node";
-import { useLoaderData, useNavigate, useSubmit, useSearchParams, useNavigation, useRouteError, isRouteErrorResponse, useActionData } from "@remix-run/react";
-import { authenticate } from "../shopify.server";
-import { getSales, revertSale, deleteSale, applySale, hasActiveSale } from "../models/sale.server";
-import {
-  Page,
-  Layout,
-  Card,
-  IndexTable,
-  Badge,
-  Button,
-  useIndexResourceState,
-  Text,
-  EmptyState,
-  Tabs,
-  Banner,
-  InlineStack,
-  Modal,
-  BlockStack,
-  Tooltip,
-  Spinner,
-} from "@shopify/polaris";
-import { SetupGuide } from "../components/SetupGuide";
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { useAppBridge } from "@shopify/app-bridge-react";
-
-// Relative time helper
-function timeAgo(dateString) {
-  const now = new Date();
-  const date = new Date(dateString);
-  const diffMs = now - date;
-  const future = diffMs < 0;
-  const absDiff = Math.abs(diffMs);
-  const mins = Math.floor(absDiff / 60000);
-  const hours = Math.floor(absDiff / 3600000);
-  const days = Math.floor(absDiff / 86400000);
-
-  if (future) {
-    if (mins < 60) return `in ${mins}m`;
-    if (hours < 24) return `in ${hours}h`;
-    if (days < 30) return `in ${days}d`;
-    return `in ${Math.floor(days / 30)}mo`;
-  }
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 30) return `${days}d ago`;
-  return `${Math.floor(days / 30)}mo ago`;
-}
-
 export async function loader({ request }) {
+  const { authenticate } = await import("../shopify.server");
   const { session } = await authenticate.admin(request);
+  const { getSales } = await import("../models/sale.server");
   try {
     const sales = await getSales(session.shop);
     return json({ sales });
@@ -60,7 +12,11 @@ export async function loader({ request }) {
 }
 
 export async function action({ request }) {
+  const { authenticate } = await import("../shopify.server");
   const { session, admin } = await authenticate.admin(request);
+  const { revertSale, deleteSale, applySale, getSale, checkItemOverlaps } = await import("../models/sale.server");
+  const { checkGlobalVariantLimit } = await import("../models/billing.server");
+
   const formData = await request.formData();
   const action = formData.get("action");
   const saleId = formData.get("saleId");
@@ -76,21 +32,18 @@ export async function action({ request }) {
         await revertSale(id, admin);
       }
     } else if (action === "activate" && saleId) {
-      const { getSale } = await import("../models/sale.server");
       const sale = await getSale(saleId, session.shop);
       if (!sale) return json({ success: false, error: "Sale not found" }, { status: 404 });
 
       const variantIds = (sale.items || []).map(i => i.variantId);
 
       // 1. Check for product overlaps
-      const { checkItemOverlaps } = await import("../models/sale.server");
       const overlapCheck = await checkItemOverlaps(session.shop, variantIds, saleId);
       if (!overlapCheck.ok) {
           return json({ success: false, error: overlapCheck.message }, { status: 400 });
       }
       
       // 2. Check global variant limit
-      const { checkGlobalVariantLimit } = await import("../models/billing.server");
       const variantLimitCheck = await checkGlobalVariantLimit(request, variantIds, saleId);
       if (!variantLimitCheck.ok) {
            return json({ success: false, error: variantLimitCheck.message }, { status: 400 });

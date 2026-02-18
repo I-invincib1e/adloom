@@ -1,39 +1,9 @@
-import { useState, useCallback, useEffect } from "react";
-import { json, redirect } from "@remix-run/node";
-import { useLoaderData, useActionData, useSubmit, useNavigation, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
-import { authenticate } from "../shopify.server";
-import { getSale, updateSale, applySale, revertSale, hasActiveSale } from "../models/sale.server";
-import { getTimers } from "../models/timer.server";
-import { checkVariantLimit, checkActiveSaleConstraint } from "../models/billing.server";
-import {
-  Page,
-  Layout,
-  Card,
-  TextField,
-  Select,
-  Button,
-  BlockStack,
-  Banner,
-  List,
-  Checkbox,
-  RadioButton,
-  InlineStack,
-  Text,
-  Box,
-  Collapsible,
-  Icon,
-  Tag,
-  Thumbnail,
-  Badge,
-} from "@shopify/polaris";
-import { useAppBridge } from "@shopify/app-bridge-react";
-import { SearchIcon } from "@shopify/polaris-icons";
-import { StrategyExample } from "../components/StrategyExample";
-import { DirtyStateModal } from "../components/DirtyStateModal";
-
 export async function loader({ request, params }) {
   console.log("Loading Sale:", params.id); // Debug Log
+  const { authenticate } = await import("../shopify.server");
   const { admin, session } = await authenticate.admin(request);
+  const { getSale } = await import("../models/sale.server");
+  const { getTimers } = await import("../models/timer.server");
   
   try {
     const sale = await getSale(params.id, session.shop);
@@ -113,7 +83,11 @@ export async function loader({ request, params }) {
 }
 
 export async function action({ request, params }) {
+  const { authenticate } = await import("../shopify.server");
   const { admin, session } = await authenticate.admin(request);
+  const { getSale, updateSale, applySale, revertSale, checkItemOverlaps } = await import("../models/sale.server");
+  const { checkGlobalVariantLimit } = await import("../models/billing.server");
+
   try {
   const formData = await request.formData();
 
@@ -135,14 +109,12 @@ export async function action({ request, params }) {
     const variantIds = items.map(i => i.variantId);
 
     // 1. Check for product overlaps and timer consistency
-    const { checkItemOverlaps } = await import("../models/sale.server");
     const overlapCheck = await checkItemOverlaps(session.shop, variantIds, params.id, sale.startTime, sale.endTime, sale.timerId);
     if (!overlapCheck.ok) {
         return json({ errors: { base: overlapCheck.message } }, { status: 400 });
     }
     
     // 2. Check global variant limit (Time-aware)
-    const { checkGlobalVariantLimit } = await import("../models/billing.server");
     const variantLimitCheck = await checkGlobalVariantLimit(request, variantIds, sale.startTime, sale.endTime, params.id);
     if (!variantLimitCheck.ok) {
          return json({ errors: { base: variantLimitCheck.message } }, { status: 400 });
@@ -194,14 +166,12 @@ export async function action({ request, params }) {
   if (!sale) throw new Response("Unauthorized", { status: 403 });
 
   // 1. Check for product overlaps and timer consistency
-  const { checkItemOverlaps } = await import("../models/sale.server");
   const overlapCheck = await checkItemOverlaps(session.shop, variantIds, params.id, start, end, timerId);
   if (!overlapCheck.ok) {
       return json({ errors: { base: overlapCheck.message } }, { status: 400 });
   }
   
   // 2. Check global variant limit (Time-aware)
-  const { checkGlobalVariantLimit } = await import("../models/billing.server");
   const variantLimitCheck = await checkGlobalVariantLimit(request, variantIds, start, end, params.id);
   if (!variantLimitCheck.ok) {
        return json({ errors: { base: variantLimitCheck.message } }, { status: 400 });

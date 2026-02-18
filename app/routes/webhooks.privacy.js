@@ -1,6 +1,5 @@
-import { authenticate } from "../shopify.server";
-
 export const action = async ({ request }) => {
+  const { authenticate } = await import("../shopify.server");
   /*
    * AUTOMATED CHECK FIX:
    * 1. This route handles mandatory GDPR webhooks.

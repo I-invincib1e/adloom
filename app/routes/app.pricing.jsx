@@ -266,16 +266,22 @@ function PlanCard({ plan, currentPlan }) {
           <Divider />
 
           <BlockStack gap="300">
-            {plan.features.map((feature, i) => (
-              <div key={i} style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                <div className="feature-icon-wrapper">
-                   <Icon source={CheckIcon} tone="base" size="extraSmall" />
+            {plan.features.map((feature, i) => {
+              const isVariant = feature.toLowerCase().includes("variant");
+              return (
+                <div key={i} style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+                  <Text 
+                    as="span" 
+                    variant={isVariant ? "bodyMd" : "bodySm"} 
+                    tone={isVariant ? "base" : "subdued"} 
+                    fontWeight={isVariant ? "bold" : "medium"}
+                    alignment="center"
+                  >
+                    {feature}
+                  </Text>
                 </div>
-                <Text as="span" variant="bodySm" tone="subdued" fontWeight="medium">
-                  {feature}
-                </Text>
-              </div>
-            ))}
+              );
+            })}
           </BlockStack>
         </BlockStack>
       </Box>

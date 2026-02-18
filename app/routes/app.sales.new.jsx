@@ -2,10 +2,10 @@ import { useState, useCallback, useEffect } from "react";
 import { json, redirect } from "@remix-run/node";
 import { useActionData, useSubmit, useNavigation, useLoaderData, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { DirtyStateModal } from "../components/DirtyStateModal";
-import { authenticate } from "../shopify.server";
-import { createSale, applySale } from "../models/sale.server"; 
-import { getTimers } from "../models/timer.server";
-import { checkVariantLimit, checkActiveSaleConstraint } from "../models/billing.server";
+// import { authenticate } from "../shopify.server"; // Will be dynamically imported
+// Removed: import { createSale, applySale } from "../models/sale.server"; 
+// Removed: import { getTimers } from "../models/timer.server";
+// Removed: import { checkVariantLimit, checkActiveSaleConstraint } from "../models/billing.server";
 import {
   Page,
   Layout,
@@ -31,7 +31,9 @@ import { SearchIcon } from "@shopify/polaris-icons";
 import { StrategyExample } from "../components/StrategyExample";
 
 export async function loader({ request }) {
+  const { authenticate } = await import("../shopify.server");
   const { session } = await authenticate.admin(request);
+  const { getTimers } = await import("../models/timer.server");
   try {
     const timers = await getTimers(session.shop);
     return json({ timers, allowed: true });
@@ -42,7 +44,10 @@ export async function loader({ request }) {
 }
 
 export async function action({ request }) {
+  const { authenticate } = await import("../shopify.server");
   const { admin, session } = await authenticate.admin(request);
+  const { createSale, applySale, checkItemOverlaps } = await import("../models/sale.server");
+  const { getPlanUsage, checkGlobalVariantLimit } = await import("../models/billing.server");
 
   try {
   const formData = await request.formData();
@@ -207,7 +212,6 @@ export async function action({ request }) {
   const now = new Date();
   
   // 1. Check total sales limit (Especially for Free plan: 1 sale limit)
-  const { getPlanUsage, checkGlobalVariantLimit } = await import("../models/billing.server");
   const usage = await getPlanUsage(request);
   if (usage.totalSales.used >= usage.totalSales.limit) {
     return json({ 
@@ -218,7 +222,6 @@ export async function action({ request }) {
   }
 
   // 2. Check for product overlaps and timer consistency
-  const { checkItemOverlaps } = await import("../models/sale.server");
   const overlapCheck = await checkItemOverlaps(session.shop, variantIds, null, start, end, timerId);
   if (!overlapCheck.ok) {
       return json({ errors: { base: overlapCheck.message } }, { status: 400 });
