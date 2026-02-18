@@ -64,21 +64,22 @@ export async function checkItemOverlaps(shop, variantIds, excludeSaleId = null, 
       const saleEnd = new Date(sale.endTime).toLocaleString();
       
       // Check for item overlap
-      conflicts.push(`"${sale.title}" (${commonItems} items, ${saleStart} to ${saleEnd})`);
+      conflicts.push(`"${sale.title}"`);
 
       // Check for timer conflict: Same product can't have two DIFFERENT timers at the same time
       // If either has no timer, it's okay (the other timer will be shown)
       // If both have timers, they must be the same timer ID
       if (targetTimerId && sale.timerId && targetTimerId !== sale.timerId) {
-        conflicts.push(`Timer conflict with "${sale.title}": A product cannot have two different countdown timers at the same time.`);
+        conflicts.push(`(Timer conflict with "${sale.title}")`);
       }
     }
   });
 
   if (conflicts.length > 0) {
+    const uniqueConflicts = [...new Set(conflicts)];
     return {
       ok: false,
-      message: `Conflict detected with existing sales: ${conflicts.join(". ")}. Please adjust your dates, products, or timers to avoid overlap.`
+      message: `Scheduling Conflict: This sale overlaps with ${uniqueConflicts.join(", ")}. Please adjust your dates or products.`
     };
   }
 

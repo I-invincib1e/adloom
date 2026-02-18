@@ -356,11 +356,14 @@ export default function NewSale() {
   const { timers, allowed } = useLoaderData();
   const [selectedItems, setSelectedItems] = useState([]);
 
+  /* 
   useEffect(() => {
-    if (actionData?.errors?.base) {
-      shopify.toast.show(actionData.errors.base, { isError: true });
-    }
-  }, [actionData]);
+    // We now display server errors in a Banner instead of a Toast
+    // if (actionData?.errors?.base) {
+    //   shopify.toast.show(actionData.errors.base, { isError: true });
+    // }
+  }, [actionData]); 
+  */
   const [title, setTitle] = useState("");
   const [discountType, setDiscountType] = useState("PERCENTAGE");
   const [value, setValue] = useState("0");

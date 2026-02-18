@@ -292,11 +292,14 @@ export default function EditSale() {
   const [isDirty, setIsDirty] = useState(false);
   const dirty = (setter) => (val) => { setIsDirty(true); setter(val); };
 
+  /*
   useEffect(() => {
-    if (actionData?.errors?.base) {
-      shopify.toast.show(actionData.errors.base, { isError: true });
-    }
+    // Server errors are now shown in a Banner
+    // if (actionData?.errors?.base) {
+    //   shopify.toast.show(actionData.errors.base, { isError: true });
+    // }
   }, [actionData]);
+  */
   const isLoading = navigation.state === "submitting";
 
   const [selectedCollections, setSelectedCollections] = useState([]);

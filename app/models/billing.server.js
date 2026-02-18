@@ -151,7 +151,7 @@ export async function checkGlobalVariantLimit(request, newVariantIds, targetStar
     if (totalCount > limit) {
         return { 
           ok: false, 
-          message: `Your plan limit for unique variants is ${limit}. With this sale, you would have ${totalCount} variants on sale during this period (due to overlaps with other sales). Please upgrade or reduce your selections.` 
+          message: `Plan Limit Reached: This sale contains ${totalCount} unique products, which exceeds your plan's limit of ${limit}. Please upgrade or remove some items.` 
         };
     }
     return { ok: true };
