@@ -1,6 +1,6 @@
 import { json, redirect } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
-import { Page, Layout, Card, Text, Button, BlockStack, Banner } from "@shopify/polaris";
+import { Page, Layout, Card, Text, Button, BlockStack, Banner, InlineStack } from "@shopify/polaris";
 import { useSubmit, useNavigation } from "@remix-run/react";
 
 export async function loader({ request }) {
