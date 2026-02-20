@@ -1,5 +1,5 @@
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData, useNavigation, useSubmit, useNavigate } from "@remix-run/react";
+import { useLoaderData, useNavigation, useSubmit } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getTimer, updateTimer, deleteTimer, duplicateTimer } from "../models/timer.server";
 import { checkLimit, checkDesignLimit } from "../models/billing.server";
@@ -63,7 +63,6 @@ export default function EditTimerPage() {
   const { timer, designAllowed } = useLoaderData();
   const submit = useSubmit();
   const nav = useNavigation();
-  const navigate = useNavigate();
   const isLoading = nav.state === "submitting";
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);

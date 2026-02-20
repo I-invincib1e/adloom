@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { json, redirect } from "@remix-run/node";
+import { json } from "@remix-run/node";
 import {
   useLoaderData,
   useActionData,
@@ -77,7 +77,6 @@ export async function action({ request, params }) {
   const description = formData.get("description");
   const startTime = formData.get("startTime");
   const endTime = formData.get("endTime");
-  const style = formData.get("style");
   const productsStr = formData.get("products");
 
   const errors = {};

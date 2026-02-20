@@ -122,13 +122,16 @@ export async function getCouponsForProduct(productId, productData = {}, shop) {
     }
 
     if (selection.type === "vendors" && productData.vendor) {
-      return selection.vendors.some(v => v.toLowerCase() === productData.vendor.toLowerCase());
+      return (selection.vendors || []).some(v => v.toLowerCase() === productData.vendor.toLowerCase());
     }
 
     if (selection.type === "collections" && productData.collections) {
       const productCollectionIds = productData.collections.split(",").map(id => id.trim());
-      // selection.collections is an array of objects {id, title, ...}
-      return selection.collections.some(c => productCollectionIds.includes(String(c.id)));
+      // selection.collections is an array of objects {id, title, ...} where id is a GID
+      return (selection.collections || []).some((c) => {
+        const numericId = String(c.id).replace("gid://shopify/Collection/", "");
+        return productCollectionIds.includes(numericId);
+      });
     }
     
     return false;

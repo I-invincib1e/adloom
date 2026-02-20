@@ -8,7 +8,7 @@ export const action = async ({ request }) => {
    */
   
   try {
-    const { topic, shop, payload } = await authenticate.webhook(request);
+    const { topic, shop } = await authenticate.webhook(request);
     console.log(`[Privacy Webhook] Received ${topic} for shop ${shop}`);
 
     // If you need to actually process these requests (e.g. email the merchant), add logic here.

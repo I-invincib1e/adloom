@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Page, Layout, Card, Text, BlockStack, InlineStack, Button, Icon, Divider, Box, Badge, ProgressBar, Banner, Modal } from "@shopify/polaris";
-import { CheckIcon, StarFilledIcon } from "@shopify/polaris-icons";
+import { Page, Layout, Text, BlockStack, InlineStack, Button, Icon, Divider, Box, Banner, Modal } from "@shopify/polaris";
+import { StarFilledIcon } from "@shopify/polaris-icons";
 import { json } from "@remix-run/node";
-import { useLoaderData, useSubmit, useActionData, useNavigate, useLocation } from "@remix-run/react";
+import { useLoaderData, useSubmit, useActionData, useLocation } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getPlanUsage } from "../models/billing.server";
 
@@ -82,8 +82,6 @@ export async function action({ request }) {
       } 
     }, { status: 500 });
   }
-  
-  return null;
 }
 
 const premiumStyles = `
@@ -366,7 +364,6 @@ function CelebrationModal({ isOpen, onClose, planName }) {
 export default function PricingPage() {
   const { usage, celebrate, planName } = useLoaderData();
   const actionData = useActionData();
-  const navigate = useNavigate();
   const location = useLocation();
   const currentPlan = usage?.plan || "Free";
   const [isYearly, setIsYearly] = useState(false);

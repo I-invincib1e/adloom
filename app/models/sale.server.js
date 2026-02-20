@@ -60,9 +60,6 @@ export async function checkItemOverlaps(shop, variantIds, excludeSaleId = null, 
   overlappingSales.forEach(sale => {
     const commonItems = sale.items.length;
     if (commonItems > 0) {
-      const saleStart = new Date(sale.startTime).toLocaleString();
-      const saleEnd = new Date(sale.endTime).toLocaleString();
-      
       // Check for item overlap
       conflicts.push(`"${sale.title}"`);
 

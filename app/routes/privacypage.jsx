@@ -1,4 +1,4 @@
-import { Page, Layout, Card, Text, BlockStack, List } from "@shopify/polaris";
+import { Card, Text, BlockStack, List } from "@shopify/polaris";
 
 export default function PrivacyPage() {
   return (

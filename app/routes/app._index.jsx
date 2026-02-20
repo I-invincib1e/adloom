@@ -628,7 +628,6 @@ export default function Index() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  const navigate = useNavigate();
 
   return (
     <Page title="Error">

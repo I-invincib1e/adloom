@@ -11,7 +11,6 @@ import {
   Text,
   EmptyState,
   InlineStack,
-  Badge,
   Modal,
   BlockStack,
   Tooltip,
@@ -73,7 +72,7 @@ export default function TimersPage() {
     if (searchParams.get("deleted") === "true") {
       shopify.toast.show("Timer deleted");
     }
-  }, [searchParams]);
+  }, [searchParams, shopify]);
 
   const confirmDelete = useCallback((timer) => {
     setTimerToDelete(timer);

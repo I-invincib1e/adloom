@@ -30,7 +30,6 @@ import {
 import { LockIcon } from "@shopify/polaris-icons";
 
 export async function loader({ request }) {
-  const { session } = await authenticate.admin(request);
   const allowed = await checkLimit(request, "coupons");
   const designAllowed = await checkDesignLimit(request);
   return json({ allowed, designAllowed });

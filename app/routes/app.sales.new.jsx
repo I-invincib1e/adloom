@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { json, redirect } from "@remix-run/node";
 import { useActionData, useSubmit, useNavigation, useLoaderData, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
 import { DirtyStateModal } from "../components/DirtyStateModal";
@@ -353,7 +353,7 @@ export default function NewSale() {
   const shopify = useAppBridge();
   const navigate = useNavigate();
   const actionData = useActionData();
-  const { timers, allowed } = useLoaderData();
+  const { allowed } = useLoaderData();
   const [selectedItems, setSelectedItems] = useState([]);
 
 
@@ -1115,7 +1115,6 @@ export default function NewSale() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  const navigate = useNavigate();
 
   return (
     <Page title="Error">

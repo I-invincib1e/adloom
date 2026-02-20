@@ -1,6 +1,6 @@
 import { json } from "@remix-run/node";
 import { useLoaderData, useActionData, useNavigation, useSubmit, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Page, Layout, Text, Card, Button, BlockStack, Box, List, InlineStack, TextField, Select, Checkbox, RadioButton, Banner, Thumbnail, Tag, Icon, Collapsible, Badge
 } from "@shopify/polaris";
@@ -186,7 +186,7 @@ export async function action({ request, params }) {
      }
   }
 
-  const now = new Date();
+
   const sale = await getSale(params.id, session.shop);
   if (!sale) throw new Response("Unauthorized", { status: 403 });
 
@@ -962,7 +962,6 @@ export default function EditSale() {
 
 export function ErrorBoundary() {
   const error = useRouteError();
-  const navigate = useNavigate();
 
   return (
     <Page title="Error">

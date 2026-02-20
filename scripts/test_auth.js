@@ -1,5 +1,5 @@
 try {
-  const shopify = require("../app/shopify.server").default;
+  require("../app/shopify.server");
   console.log("Shopify server initialized successfully");
   process.exit(0);
 } catch (err) {
