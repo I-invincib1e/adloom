@@ -139,3 +139,12 @@ export async function getCouponsForProduct(productId, productData = {}, shop) {
     return new Date(b.createdAt) - new Date(a.createdAt);
   });
 }
+
+export async function updateCouponPriority(id, priority, shop) {
+  const coupon = await getCoupon(id, shop);
+  if (!coupon) throw new Error("Unauthorized or Not Found");
+  return db.coupon.update({
+    where: { id },
+    data: { priority: parseInt(priority) || 0 },
+  });
+}

@@ -1,7 +1,7 @@
 import { json } from "@remix-run/node";
 import { useLoaderData, useSubmit } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
-import { getCoupons, getCoupon, deleteCoupon } from "../models/coupon.server";
+import { getCoupons, getCoupon, deleteCoupon, updateCouponPriority } from "../models/coupon.server";
 import {
   Page,
   Layout,
@@ -12,23 +12,48 @@ import {
   EmptyState,
   Badge,
   InlineStack,
+  ButtonGroup,
 } from "@shopify/polaris";
 
 export async function loader({ request }) {
   const { session } = await authenticate.admin(request);
   const coupons = await getCoupons(session.shop);
-  return json({ coupons });
+  // Sort by priority for display
+  const sorted = [...coupons].sort((a, b) => {
+    const pA = a.priority || 0;
+    const pB = b.priority || 0;
+    if (pA !== pB) return pA - pB;
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+  return json({ coupons: sorted });
 }
 
 export async function action({ request }) {
   const { session } = await authenticate.admin(request);
   const formData = await request.formData();
   const id = formData.get("id");
+  const actionType = formData.get("action");
 
-  if (formData.get("action") === "delete") {
+  if (actionType === "delete") {
     const coupon = await getCoupon(id, session.shop);
     if (!coupon) throw new Response("Unauthorized", { status: 403 });
     await deleteCoupon(id);
+  }
+
+  if (actionType === "priority_up") {
+    const coupon = await getCoupon(id, session.shop);
+    if (coupon) {
+      const newPriority = Math.max(0, (coupon.priority || 0) - 1);
+      await updateCouponPriority(id, newPriority, session.shop);
+    }
+  }
+
+  if (actionType === "priority_down") {
+    const coupon = await getCoupon(id, session.shop);
+    if (coupon) {
+      const newPriority = (coupon.priority || 0) + 1;
+      await updateCouponPriority(id, newPriority, session.shop);
+    }
   }
 
   return json({ success: true });
@@ -56,6 +81,13 @@ export default function CouponsPage() {
     });
   };
 
+  const handlePriority = (id, direction) => {
+    submit(
+      { action: `priority_${direction}`, id },
+      { method: "post" }
+    );
+  };
+
   const rowMarkup = coupons.map((coupon, index) => (
     <IndexTable.Row id={coupon.id} key={coupon.id} position={index}>
       <IndexTable.Cell>
@@ -73,29 +105,30 @@ export default function CouponsPage() {
         </Text>
       </IndexTable.Cell>
       <IndexTable.Cell>
-        <Text tone="subdued">
-          {(() => {
-             try {
-                const style = JSON.parse(coupon.style || "{}");
-                const selection = style.selection || {};
-                switch (selection.type) {
-                  case "collections":
-                    return `${selection.collections?.length || 0} collections`;
-                  case "tags":
-                    return `${selection.tags?.length || 0} tags`;
-                  case "vendors":
-                    return `${selection.vendors?.length || 0} vendors`;
-                  case "all":
-                    return "Entire store";
-                  case "products":
-                  default:
-                    return `${coupon.products?.length || 0} products`;
-                }
-             } catch {
-                return `${coupon.products?.length || 0} products`;
-             }
-          })()}
-        </Text>
+        <InlineStack gap="200" blockAlign="center">
+          <ButtonGroup>
+            <Button
+              size="micro"
+              variant="plain"
+              onClick={() => handlePriority(coupon.id, "up")}
+              disabled={(coupon.priority || 0) <= 0}
+              accessibilityLabel="Move up"
+            >
+              ▲
+            </Button>
+            <Text variant="bodySm" as="span" fontWeight="semibold" tone="subdued">
+              {coupon.priority || 0}
+            </Text>
+            <Button
+              size="micro"
+              variant="plain"
+              onClick={() => handlePriority(coupon.id, "down")}
+              accessibilityLabel="Move down"
+            >
+              ▼
+            </Button>
+          </ButtonGroup>
+        </InlineStack>
       </IndexTable.Cell>
       <IndexTable.Cell>
         <InlineStack gap="200">
@@ -156,7 +189,7 @@ export default function CouponsPage() {
                   { title: "Code" },
                   { title: "Status" },
                   { title: "Schedule" },
-                  { title: "Products" },
+                  { title: "Priority" },
                   { title: "Actions" },
                 ]}
                 selectable={false}

@@ -110,7 +110,9 @@ function renderCouponCard(coupon, index) {
       }
       customStyles = `
         --rc-bg: ${styleObj.backgroundColor || "#fff"};
+        --rc-border: ${styleObj.borderColor || "transparent"};
         --rc-text: ${styleObj.textColor || "#1a1a1a"};
+        border-style: ${styleObj.borderStyle || "solid"};
         border-radius: ${styleObj.borderRadius || 12}px;
         font-family: ${styleObj.typography || "inherit"};
       `;

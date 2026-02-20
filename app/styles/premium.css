@@ -112,7 +112,7 @@
   --rc-text: #1a1a1a;
 
   background: var(--rc-bg);
-  border: none;
+  border: 1px solid var(--rc-border);
   border-radius: 12px;
   color: var(--rc-text);
   overflow: hidden;
