@@ -163,14 +163,11 @@ function buildSidebar(productId, coupons) {
   return `
     <div class="rockit-sidebar-overlay" id="rockit-sidebar-overlay-${productId}"></div>
     <div class="rockit-sidebar" id="rockit-sidebar-${productId}">
-      <div class="rockit-sidebar-header">
-        <strong>All Offers</strong>
-        <button class="rockit-sidebar-close" id="rockit-sidebar-close-${productId}">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-      </div>
-      <div class="rockit-sidebar-body">
+      <div class="rockit-sidebar-body rockit-sidebar-no-header">
         ${cardsHtml}
+        <button class="rockit-sidebar-close-btn" id="rockit-sidebar-close-${productId}">
+          Close
+        </button>
       </div>
     </div>`;
 }

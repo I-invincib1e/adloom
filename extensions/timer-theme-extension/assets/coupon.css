@@ -100,18 +100,19 @@
 
 .rockit-percent-badge {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  background: #ec4899;
-  color: white;
-  font-size: 8px;
+  bottom: -2px;
+  right: -2px;
+  background: #ff6b81; /* bright and rich pink */
+  color: #fff;
+  font-size: 9px;
   font-weight: 800;
-  height: 14px;
-  width: 14px;
+  height: 16px;
+  width: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
+  border: 2px solid var(--rc-bg, #fff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
@@ -284,45 +285,47 @@
   right: 0;
 }
 
-.rockit-sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 20px 16px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.rockit-sidebar-header strong {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111;
-}
-
-.rockit-sidebar-close {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  color: #666;
-  border-radius: 6px;
-  transition: background 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.rockit-sidebar-close:hover {
-  background: #f5f5f5;
-  color: #111;
-}
-
 .rockit-sidebar-body {
   flex: 1;
   overflow-y: auto;
-  padding: 16px 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+  background: #fff;
+}
+
+.rockit-sidebar-body.rockit-sidebar-no-header {
+  padding-top: 40px;
+}
+
+.rockit-sidebar-body .rockit-coupon-card {
+  --rc-bg: #fafafa !important;
+  --rc-border: #eaeaea !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+.rockit-sidebar-close-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  border: 1px solid #eaeaea;
+  border-radius: 12px;
+  color: #444;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.rockit-sidebar-close-btn:hover {
+  background: #f1f1f1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 /* ========================================
