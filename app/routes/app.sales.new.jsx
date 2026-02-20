@@ -500,6 +500,16 @@ export default function NewSale() {
   };
 
   const handleSubmit = () => {
+    if (!title.trim()) {
+      shopify.toast.show("Sale Title is required", { isError: true });
+      return;
+    }
+    
+    if (!value || isNaN(value) || parseFloat(value) <= 0) {
+      shopify.toast.show("Please enter a valid discount amount greater than 0", { isError: true });
+      return;
+    }
+
     // Validation: timer is required
     if (!timerId) {
       shopify.toast.show("A timer is required. Please select or create a timer.", { isError: true });

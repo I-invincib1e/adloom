@@ -1,6 +1,6 @@
 import { json } from "@remix-run/node";
 import { useLoaderData, useActionData, useNavigation, useSubmit, useNavigate, useRouteError, isRouteErrorResponse } from "@remix-run/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Page, Layout, Text, Card, Button, BlockStack, Box, List, InlineStack, TextField, Select, Checkbox, RadioButton, Banner, Thumbnail, Tag, Icon, Collapsible, Badge
 } from "@shopify/polaris";
@@ -232,6 +232,16 @@ export default function EditSale() {
   const { sale, shopDomain, timers } = useLoaderData();
   const shopify = useAppBridge();
   const navigate = useNavigate();
+  const actionData = useActionData();
+
+  useEffect(() => {
+    if (actionData?.success) {
+      shopify.toast.show(actionData.message || "Sale saved successfully");
+    } else if (actionData?.errors) {
+      const firstError = Object.values(actionData.errors)[0];
+      shopify.toast.show(firstError || "Error saving sale", { isError: true });
+    }
+  }, [actionData, shopify]);
 
   // Pre-fill state from loaded sale
   const [selectedItems, setSelectedItems] = useState(
@@ -285,7 +295,7 @@ export default function EditSale() {
   const [showExample, setShowExample] = useState(false);
 
   const submit = useSubmit();
-  const actionData = useActionData();
+
   const navigation = useNavigation();
 
   // --- Unsaved changes guard ---
@@ -344,6 +354,16 @@ export default function EditSale() {
   };
 
   const handleSubmit = () => {
+    if (!title.trim()) {
+      shopify.toast.show("Sale Title is required", { isError: true });
+      return;
+    }
+    
+    if (!value || isNaN(value) || parseFloat(value) <= 0) {
+      shopify.toast.show("Please enter a valid discount amount greater than 0", { isError: true });
+      return;
+    }
+
     if (!startDate || !startTime) {
       shopify.toast.show("Start date and time are required.", { isError: true });
       return;

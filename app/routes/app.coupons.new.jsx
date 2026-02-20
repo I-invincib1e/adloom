@@ -126,7 +126,7 @@ export default function NewCouponPage() {
   const [stylePreset, setStylePreset] = useState("standard");
   const [styleConfig, setStyleConfig] = useState({
     backgroundColor: "#ffffff",
-    borderColor: "#e1e3e5",
+    borderColor: "#e3e3e3",
     textColor: "#202223",
     codeColor: "#111111",
     borderRadius: 8,
@@ -241,8 +241,21 @@ export default function NewCouponPage() {
   };
 
   const handleSubmit = () => {
+    // 1. Validate Required Fields
+    if (!offerTitle.trim()) {
+      shopify.toast.show("Offer Title is required", { isError: true });
+      return;
+    }
+    if (!couponCode.trim()) {
+      shopify.toast.show("Coupon Code is required", { isError: true });
+      return;
+    }
     if (!startDate || !endDate) {
       shopify.toast.show("Please select start and end dates", { isError: true });
+      return;
+    }
+    if (!startTime || !endTime) {
+      shopify.toast.show("Please select start and end times", { isError: true });
       return;
     }
 

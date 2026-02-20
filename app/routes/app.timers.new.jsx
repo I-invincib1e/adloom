@@ -36,7 +36,7 @@ export async function action({ request }) {
   }
 
   await createTimer(formData, session.shop);
-  return redirect("/app/timers?success=true");
+  return redirect("/app/timers?success=true&action=created");
 }
 
 export default function NewTimerPage() {

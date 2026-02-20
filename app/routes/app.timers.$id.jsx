@@ -36,7 +36,7 @@ export async function action({ request, params }) {
     }
 
     await updateTimer(params.id, formData, session.shop);
-    return redirect("/app/timers?success=true");
+    return redirect("/app/timers?success=true&action=saved");
   }
 
   const formData = await request.formData();

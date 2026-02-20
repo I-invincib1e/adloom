@@ -18,9 +18,11 @@ import {
   Badge,
 } from "@shopify/polaris";
 import { LockIcon } from "@shopify/polaris-icons";
+import { useAppBridge } from "@shopify/app-bridge-react";
 
 export function TimerForm({ timer, onSave, isLoading, disabled, onDirty, designAllowed }) {
   // --- State ---
+  const shopify = useAppBridge();
   const [name, setName] = useState(timer?.name || "");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
@@ -171,6 +173,15 @@ export function TimerForm({ timer, onSave, isLoading, disabled, onDirty, designA
   };
 
   const handleSubmit = () => {
+    if (!name.trim()) {
+      shopify.toast.show("Internal Name is required", { isError: true });
+      return;
+    }
+    if (!config.title?.trim()) {
+      shopify.toast.show("Banner Title is required", { isError: true });
+      return;
+    }
+
     onSave({
       name,
       textTemplate: "",
