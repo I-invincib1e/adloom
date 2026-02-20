@@ -450,14 +450,21 @@ export default function NewCouponPage() {
                             <Icon source={LockIcon} tone="subdued" />
                         </div>
                     )}
-                    <div style={{ width: "100%", height: "40px", borderRadius: "4px", marginBottom: "8px", overflow: "hidden", border: "1px solid #ddd" }}>
-                       <div style={{ 
-                         width: "100%", height: "100%", 
+                    <div 
+                      className={`${PRESETS[key].className || ""}`}
+                      style={{ 
+                         width: "100%", height: "40px", 
+                         borderRadius: `${PRESETS[key].borderRadius || 4}px`, 
+                         marginBottom: "8px", 
+                         border: `${PRESETS[key].borderStyle || "solid"} 1px ${PRESETS[key].borderColor || "#ddd"}`,
                          background: PRESETS[key].backgroundColor,
                          display: "flex", alignItems: "center", justifyContent: "center",
                          color: PRESETS[key].textColor,
-                         fontSize: "10px", fontWeight: "bold"
-                       }}>ABC10</div>
+                         fontSize: "10px", fontWeight: "bold",
+                         position: "relative",
+                         overflow: PRESETS[key].className?.includes("ticket") ? "visible" : "hidden",
+                       }}>
+                         ABC10
                     </div>
                     <Text variant="bodyXs" fontWeight="medium">{key.charAt(0).toUpperCase() + key.slice(1)}</Text>
                   </div>
@@ -544,45 +551,42 @@ export default function NewCouponPage() {
                 <Text variant="headingSm">Live Preview</Text>
                 <div style={{ padding: "10px 0" }}>
                    <div 
-                    className={`${PRESETS[stylePreset]?.className || ""}`}
+                    className={`rockit-coupon-card is-expanded ${PRESETS[stylePreset]?.className || ""}`}
                     style={{
-                      background: styleConfig.backgroundColor,
-                      border: `${styleConfig.borderStyle} 1px ${styleConfig.borderColor}`,
-                      borderRadius: `${styleConfig.borderRadius}px`,
-                      padding: "16px",
-                      color: styleConfig.textColor,
-                      fontFamily: styleConfig.typography,
-                      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-                      position: "relative",
-                      transition: "all 0.3s ease"
+                      "--rc-bg": styleConfig.backgroundColor || "#fafafa",
+                      "--rc-border": styleConfig.borderColor || "#e3e3e3",
+                      "--rc-text": styleConfig.textColor || "#1a1a1a",
+                      borderStyle: styleConfig.borderStyle || "solid",
+                      borderRadius: `${styleConfig.borderRadius || 8}px`,
+                      fontFamily: styleConfig.typography || "inherit",
                     }}
                    >
-                     <InlineStack align="space-between" blockAlign="center" wrap={false}>
-                        <BlockStack gap="100">
-                          <Text variant="bodyMd" fontWeight="bold" tone="inherit">
-                            🎁 {offerTitle || "Your Offer Title"}
-                          </Text>
-                          <Text variant="bodyXs" tone="inherit" style={{ opacity: 0.8 }}>
-                            {description || "Add a description..."}
-                          </Text>
-                        </BlockStack>
-
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                           <div style={{
-                             background: styleConfig.codeColor,
-                             color: styleConfig.backgroundColor?.includes('white') || styleConfig.backgroundColor === '#ffffff' ? '#ffffff' : styleConfig.backgroundColor,
-                             padding: "4px 10px",
-                             borderRadius: "4px",
-                             fontWeight: "800",
-                             fontFamily: "monospace",
-                             fontSize: `${styleConfig.fontSize}px`,
-                             letterSpacing: "1px",
-                             boxShadow: "inset 0 1px 3px rgba(0,0,0,0.2)"
-                           }}>
-                             {couponCode || "GIFT10"}
-                           </div>
+                      <div className="rockit-coupon-header">
+                        <div className="rockit-coupon-header-left">
+                          <div className="rockit-coupon-icon">
+                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                            <div className="rockit-percent-badge">%</div>
+                          </div>
+                          <div className="rockit-coupon-info">
+                            <div className="rockit-coupon-offer">{offerTitle || "Your Offer Title"}</div>
+                            {description && <div className="rockit-coupon-desc">{description}</div>}
+                          </div>
                         </div>
-                     </InlineStack>
+                        <div className="rockit-coupon-chevron">
+                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                      </div>
+                      <div className="rockit-coupon-body">
+                        <div className="rockit-coupon-body-content">
+                          <span className="rockit-coupon-code" style={{ 
+                             border: "1px solid var(--rc-border)", 
+                             color: styleConfig.codeColor || "var(--rc-text)", 
+                             background: styleConfig.backgroundColor === "#ffffff" ? "#fdfdfd" : "#ffffff", 
+                             fontSize: `${styleConfig.fontSize || 13}px` 
+                          }}>{couponCode || "GIFT10"}</span>
+                          <button type="button" className="rockit-btn-copy-text" style={{ color: styleConfig.codeColor }}>Copy Code</button>
+                        </div>
+                      </div>
                    </div>
                 </div>
               </BlockStack>
