@@ -12,39 +12,15 @@
 
 /* Animations */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-/* Application Classes */
 .animate-fade-in-up {
   animation: fadeInUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
@@ -53,18 +29,10 @@
   animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
-.stagger-1 {
-  animation-delay: 0.1s;
-}
-.stagger-2 {
-  animation-delay: 0.2s;
-}
-.stagger-3 {
-  animation-delay: 0.3s;
-}
-.stagger-4 {
-  animation-delay: 0.4s;
-}
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
 
 /* Custom Polaris Overrides */
 .elite-card {
@@ -90,25 +58,16 @@
 .badge-pulse::after {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   border-radius: inherit;
   box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
   animation: pulse-green 2s infinite;
 }
 
 @keyframes pulse-green {
-  0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-  }
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
 /* Premium Toggle Switcher */
@@ -134,9 +93,7 @@
   color: var(--p-color-text-subdued);
 }
 
-.toggle-btn:hover {
-  color: var(--p-color-text);
-}
+.toggle-btn:hover { color: var(--p-color-text); }
 
 .toggle-btn.active {
   background: var(--p-color-bg-surface);
@@ -144,23 +101,27 @@
   box-shadow: var(--elite-shadow-sm);
 }
 
-/* --- Base Coupon Card --- */
+/* ========================================
+   ADMIN LIVE PREVIEW — Coupon Card Styles
+   ======================================== */
+
+/* Base Card */
 .rockit-coupon-card {
-  --rc-bg: #fafafa;
-  --rc-border: #e3e3e3;
+  --rc-bg: #fff;
+  --rc-border: transparent;
   --rc-text: #1a1a1a;
-  
+
   background: var(--rc-bg);
-  border: 1px solid var(--rc-border);
+  border: none;
   border-radius: 12px;
   color: var(--rc-text);
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .rockit-coupon-card.is-expanded {
-  border-color: #c4c4c4;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 
 /* Accordion Header */
@@ -168,9 +129,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
+  padding: 14px 16px;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -178,7 +138,7 @@
 .rockit-coupon-header-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .rockit-coupon-icon {
@@ -186,51 +146,62 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
   color: var(--rc-text);
-  opacity: 0.8;
+  opacity: 0.75;
 }
+
+.rockit-coupon-icon svg { width: 22px; height: 22px; }
 
 .rockit-percent-badge {
   position: absolute;
-  bottom: -4px;
-  right: -4px;
-  background: #f472b6; /* pink tint from mockup */
+  bottom: 0; right: 0;
+  background: #ec4899;
   color: white;
-  font-size: 9px;
-  font-weight: bold;
-  height: 14px;
-  width: 14px;
+  font-size: 8px;
+  font-weight: 800;
+  height: 14px; width: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
-.rockit-coupon-info {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+.rockit-coupon-info { display: flex; flex-direction: column; gap: 2px; }
 
 .rockit-coupon-offer {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   line-height: 1.3;
+  color: var(--rc-text);
 }
 
 .rockit-coupon-desc {
   font-size: 12px;
-  opacity: 0.7;
+  opacity: 0.55;
+  line-height: 1.4;
+}
+
+.rockit-coupon-chevron {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
 }
 
 .rockit-coupon-chevron svg {
   transition: transform 0.3s ease;
-  opacity: 0.6;
+  opacity: 0.4;
+  width: 14px; height: 14px;
 }
 
 .rockit-coupon-card.is-expanded .rockit-coupon-chevron svg {
   transform: rotate(180deg);
+  opacity: 0.7;
 }
 
 /* Accordion Body */
@@ -241,17 +212,17 @@
 }
 
 .rockit-coupon-card.is-expanded .rockit-coupon-body {
-  max-height: 150px;
+  max-height: 120px;
 }
 
 .rockit-coupon-body-content {
-  padding: 0 16px 16px 16px;
+  padding: 0 16px 14px 64px;
   display: flex;
   align-items: center;
   gap: 12px;
   opacity: 0;
-  transform: translateY(-5px);
-  transition: opacity 0.3s ease 0.1s, transform 0.3s ease 0.1s;
+  transform: translateY(-4px);
+  transition: opacity 0.25s ease 0.08s, transform 0.25s ease 0.08s;
 }
 
 .rockit-coupon-card.is-expanded .rockit-coupon-body-content {
@@ -259,16 +230,23 @@
   transform: translateY(0);
 }
 
+/* Pill Code Badge */
 .rockit-coupon-code {
-  font-family: monospace;
+  font-family: 'SF Mono', 'Fira Code', monospace;
   font-weight: 700;
-  padding: 6px 12px;
-  border-radius: 6px;
-  letter-spacing: 0.5px;
+  font-size: 13px;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  letter-spacing: 0.8px;
+  background: #f5f5f5;
+  color: var(--rc-text);
+  border: 1px solid rgba(0, 0, 0, 0.06);
   -webkit-user-select: all;
   user-select: all;
+  white-space: nowrap;
 }
 
+/* Copy Button */
 .rockit-btn-copy-text {
   background: none;
   border: none;
@@ -276,90 +254,98 @@
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
-  padding: 6px 8px;
-  transition: opacity 0.2s;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-left: auto;
+  transition: all 0.2s;
+  white-space: nowrap;
 }
 
-/* ===== PREMIUM THEMES ====== */
+/* ===== PREMIUM THEMES — Borderless, Shadow-Only ===== */
 
 /* Neon */
 .coupon-neon {
-  background: #000 !important;
-  border: 2px solid #0ff !important;
+  background: #0a0a0a !important;
+  border: none !important;
   color: #0ff !important;
-  box-shadow: 0 0 10px rgba(0, 255, 255, 0.2), inset 0 0 5px rgba(0, 255, 255, 0.1) !important;
-  animation: neonPulse 2s infinite alternate !important;
+  box-shadow: 0 0 8px rgba(0, 255, 255, 0.15), 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  animation: neonPulse 2.5s infinite alternate !important;
 }
 .coupon-neon .rockit-coupon-header, .coupon-neon .rockit-coupon-icon { color: #0ff !important; }
-.coupon-neon .rockit-percent-badge { background: #0ff; color: #000; box-shadow: 0 0 8px #0ff; }
-.coupon-neon .rockit-btn-copy-text { color: #f0f !important; text-shadow: 0 0 4px rgba(255,0,255,0.5); }
+.coupon-neon .rockit-coupon-offer { color: #0ff !important; }
+.coupon-neon .rockit-percent-badge { background: #0ff; color: #000; box-shadow: 0 0 6px rgba(0,255,255,0.5); }
+.coupon-neon .rockit-coupon-code { background: rgba(0,255,255,0.1) !important; color: #fff !important; border-color: rgba(0,255,255,0.3) !important; }
+.coupon-neon .rockit-btn-copy-text { color: #f0f !important; }
 
 @keyframes neonPulse {
-  from { box-shadow: 0 0 5px rgba(0, 255, 255, 0.1), inset 0 0 2px rgba(0, 255, 255, 0.1); }
-  to { box-shadow: 0 0 15px rgba(0, 255, 255, 0.6), inset 0 0 8px rgba(0, 255, 255, 0.3); border-color: #fff; }
+  from { box-shadow: 0 0 5px rgba(0, 255, 255, 0.1), 0 2px 8px rgba(0, 0, 0, 0.3); }
+  to   { box-shadow: 0 0 20px rgba(0, 255, 255, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3); }
 }
 
 /* Gold */
 .coupon-gold {
   background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c) !important;
   background-size: 200% auto !important;
-  border: 1px solid #aa771c !important;
+  border: none !important;
   color: #3e2b00 !important;
-  box-shadow: 0 4px 15px rgba(187, 143, 44, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(187, 143, 44, 0.2) !important;
   animation: goldShine 4s linear infinite !important;
 }
+.coupon-gold .rockit-coupon-offer { color: #3e2b00 !important; }
 .coupon-gold .rockit-percent-badge { background: #3e2b00; color: #fcf6ba; }
-.coupon-gold .rockit-btn-copy-text { color: #3e2b00 !important; font-weight: 800; }
+.coupon-gold .rockit-coupon-code { background: rgba(62,43,0,0.1) !important; color: #3e2b00 !important; border-color: rgba(62,43,0,0.15) !important; }
+.coupon-gold .rockit-btn-copy-text { color: #5a3e00 !important; font-weight: 800; }
 
 @keyframes goldShine {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
 
 /* Glass */
 .coupon-glass {
-  background: linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.1)) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.8) !important;
-  border-left: 1px solid rgba(255, 255, 255, 0.8) !important;
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07) !important;
-  color: #000 !important;
+  background: linear-gradient(135deg, rgba(255,255,255,0.5), rgba(255,255,255,0.15)) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  border: none !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.06) !important;
+  color: #1a1a1a !important;
+}
+.coupon-glass .rockit-coupon-code { background: rgba(255,255,255,0.4) !important; border-color: rgba(255,255,255,0.5) !important; }
+
+/* Minimal */
+.coupon-minimal-luxe {
+  background: #fff !important;
+  border: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase !important;
 }
 
 /* Ticket */
 .ticket-stub {
   position: relative;
   background: #fff !important;
-  border: 2px dashed #ccc !important;
+  border: none !important;
   border-radius: 8px !important;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.03) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
   overflow: visible !important;
 }
 .ticket-stub::before, .ticket-stub::after {
-  content: ""; 
-  position: absolute; 
-  left: -12px; 
-  width: 24px; 
-  height: 24px;
+  content: "";
+  position: absolute;
+  left: -10px;
+  width: 20px; height: 20px;
   background: var(--p-color-bg-surface-secondary, #f9f9f9);
-  border-radius: 50%; 
-  top: 50%; 
+  border-radius: 50%;
+  top: 50%;
   transform: translateY(-50%);
-  border-right: 2px dashed #ccc;
+  box-shadow: inset 2px 0 4px rgba(0,0,0,0.06);
   z-index: 2;
 }
-.ticket-stub::after { 
-  left: auto; 
-  right: -12px; 
-  border-right: none;
-  border-left: 2px dashed #ccc;
-}
-.coupon-minimal-luxe {
-  background: #fff !important;
-  border: 1px solid #111 !important;
-  letter-spacing: 2px !important;
-  text-transform: uppercase !important;
+.ticket-stub::after {
+  left: auto;
+  right: -10px;
+  box-shadow: inset -2px 0 4px rgba(0,0,0,0.06);
 }

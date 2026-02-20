@@ -177,6 +177,7 @@ export default function EditCouponPage() {
   const [selectedVendors, setSelectedVendors] = useState(initialStyle.selection?.vendors || []);
   const [tagInput, setTagInput] = useState("");
   const [vendorInput, setVendorInput] = useState("");
+  const [priority, setPriority] = useState(String(coupon.priority || 0));
 
   // Styling State
   const [stylePreset, setStylePreset] = useState(initialStyle.preset);
@@ -302,6 +303,7 @@ export default function EditCouponPage() {
     formData.append("offerTitle", offerTitle);
     formData.append("couponCode", couponCode);
     formData.append("description", description);
+    formData.append("priority", priority);
     formData.append("startTime", startDateTime);
     formData.append("endTime", endDateTime);
     
@@ -368,6 +370,15 @@ export default function EditCouponPage() {
           <TextField label="Offer title" value={offerTitle} onChange={dirty(setOfferTitle)} autoComplete="off" placeholder="e.g. Buy 1 Get 1 Free" />
           <TextField label="Coupon code" value={couponCode} onChange={dirty(setCouponCode)} autoComplete="off" placeholder="e.g. BYG1" monospaced />
           <TextField label="Description (optional)" value={description} onChange={dirty(setDescription)} autoComplete="off" multiline={2} />
+          <TextField
+              label="Display Priority"
+              type="number"
+              value={priority}
+              onChange={dirty(setPriority)}
+              autoComplete="off"
+              helpText="Lower number = shown first (e.g. 1 shows before 10). Default is 0."
+              min={0}
+          />
         </BlockStack>
       </Card>
 

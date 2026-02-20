@@ -1,8 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   initLoomCoupons();
   
-  // Edge Case 2 Solution: MutationObserver for Section Rendering API
-  // Re-initialize if the DOM is updated (e.g., mini-cart, quick-view)
+  // MutationObserver for Section Rendering API
   const observer = new MutationObserver((mutations) => {
     const hasNewCoupons = Array.from(mutations).some(m => 
       Array.from(m.addedNodes).some(n => n.nodeType === 1 && (n.classList?.contains('rockit-coupons-wrapper') || n.querySelector?.('.rockit-coupons-wrapper')))
@@ -11,8 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // Edge Case 3 Solution: Variant Selection Listener
-  // Listen for Shopify variant changes in the URL
+  // Variant change listener
   let lastUrl = location.href;
   new MutationObserver(() => {
     const url = location.href;
@@ -36,7 +34,6 @@ async function initLoomCoupons() {
     if (!productId) return;
 
     try {
-      // Fade-in effect
       container.style.opacity = "0";
       container.style.transition = "opacity 0.4s ease";
 
@@ -64,21 +61,21 @@ async function initLoomCoupons() {
       `;
       
       visibleCoupons.forEach((c, i) => {
-        html += renderCouponCard(c, i, false);
+        html += renderCouponCard(c, i);
       });
 
       if (hiddenCoupons.length > 0) {
-        html += `<div class="rockit-hidden-offers" id="rockit-hidden-offers-${productId}" style="display: none;">`;
-        hiddenCoupons.forEach((c, i) => {
-          html += renderCouponCard(c, maxVisible + i, true);
-        });
-        html += `</div>`;
         html += `<button class="rockit-more-btn" id="rockit-more-btn-${productId}">
-          +${hiddenCoupons.length} more offer${hiddenCoupons.length > 1 ? "s" : ""}
+          +${hiddenCoupons.length} more offer${hiddenCoupons.length > 1 ? "s" : ""} →
         </button>`;
       }
 
       html += `</div></div>`;
+
+      // Build sidebar if needed
+      if (hiddenCoupons.length > 0) {
+        html += buildSidebar(productId, hiddenCoupons);
+      }
 
       container.innerHTML = html;
       container.style.display = "block";
@@ -88,12 +85,8 @@ async function initLoomCoupons() {
       
       if (hiddenCoupons.length > 0) {
         const moreBtn = document.getElementById(`rockit-more-btn-${productId}`);
-        const hiddenArea = document.getElementById(`rockit-hidden-offers-${productId}`);
-        if(moreBtn && hiddenArea) {
-           moreBtn.addEventListener("click", () => {
-             hiddenArea.style.display = "block";
-             moreBtn.style.display = "none";
-           });
+        if (moreBtn) {
+          moreBtn.addEventListener("click", () => openSidebar(productId));
         }
       }
     } catch (e) {
@@ -102,7 +95,7 @@ async function initLoomCoupons() {
   });
 }
 
-function renderCouponCard(coupon, index, isHiddenInitial) {
+function renderCouponCard(coupon, index) {
   const desc = coupon.description ? `<div class="rockit-coupon-desc">${escapeHtml(coupon.description)}</div>` : "";
   
   let styleObj = {};
@@ -116,12 +109,9 @@ function renderCouponCard(coupon, index, isHiddenInitial) {
         presetClass = `coupon-${styleObj.preset}`;
       }
       customStyles = `
-        --rc-bg: ${styleObj.backgroundColor || "#fafafa"};
-        --rc-border: ${styleObj.borderColor || "#e3e3e3"};
+        --rc-bg: ${styleObj.backgroundColor || "#fff"};
         --rc-text: ${styleObj.textColor || "#1a1a1a"};
-        --rc-code-bg: ${styleObj.codeColor || ""};
-        border-style: ${styleObj.borderStyle || "solid"};
-        border-radius: ${styleObj.borderRadius || 8}px;
+        border-radius: ${styleObj.borderRadius || 12}px;
         font-family: ${styleObj.typography || "inherit"};
       `;
     } else if (coupon.style) {
@@ -132,17 +122,9 @@ function renderCouponCard(coupon, index, isHiddenInitial) {
   }
 
   const codeColorVal = styleObj.codeColor || "var(--rc-text)";
-  const bgCodeVal = styleObj.backgroundColor === "#ffffff" ? "#fdfdfd" : "#ffffff";
-  const codeAreaStyle = `border: 1px solid var(--rc-border); color: ${codeColorVal}; background: ${bgCodeVal}; font-size: ${styleObj.fontSize || 13}px;`;
+  const codeStyle = `color: ${codeColorVal}; font-size: ${styleObj.fontSize || 13}px;`;
   
-  const discountIconSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5V2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5V21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12V12Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-    <path d="M7 12L17 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M10 8L10 8.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M14 16L14 16.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-
-  const tagIconSvg = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`;
+  const tagIconSvg = `<svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`;
 
   return `
     <div class="rockit-coupon-card ${presetClass}" data-index="${index}" style="${customStyles}">
@@ -158,29 +140,86 @@ function renderCouponCard(coupon, index, isHiddenInitial) {
           </div>
         </div>
         <div class="rockit-coupon-chevron">
-           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
       </div>
       <div class="rockit-coupon-body">
         <div class="rockit-coupon-body-content">
-          <span class="rockit-coupon-code" style="${codeAreaStyle}">${escapeHtml(coupon.couponCode)}</span>
+          <span class="rockit-coupon-code" style="${codeStyle}">${escapeHtml(coupon.couponCode)}</span>
           <button class="rockit-btn-copy-text" data-action="copy" data-code="${escapeHtml(coupon.couponCode)}">Copy Code</button>
         </div>
       </div>
     </div>`;
 }
 
+function buildSidebar(productId, coupons) {
+  let cardsHtml = "";
+  coupons.forEach((c, i) => {
+    cardsHtml += renderCouponCard(c, i);
+  });
+
+  return `
+    <div class="rockit-sidebar-overlay" id="rockit-sidebar-overlay-${productId}"></div>
+    <div class="rockit-sidebar" id="rockit-sidebar-${productId}">
+      <div class="rockit-sidebar-header">
+        <strong>All Offers</strong>
+        <button class="rockit-sidebar-close" id="rockit-sidebar-close-${productId}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="rockit-sidebar-body">
+        ${cardsHtml}
+      </div>
+    </div>`;
+}
+
+function openSidebar(productId) {
+  const sidebar = document.getElementById(`rockit-sidebar-${productId}`);
+  const overlay = document.getElementById(`rockit-sidebar-overlay-${productId}`);
+  if (!sidebar || !overlay) return;
+
+  sidebar.classList.add("open");
+  overlay.classList.add("open");
+  document.body.style.overflow = "hidden";
+
+  // Attach close handlers
+  const closeBtn = document.getElementById(`rockit-sidebar-close-${productId}`);
+  if (closeBtn) closeBtn.onclick = () => closeSidebar(productId);
+  overlay.onclick = () => closeSidebar(productId);
+  
+  // Attach card events inside sidebar
+  attachCardEvents(sidebar);
+}
+
+function closeSidebar(productId) {
+  const sidebar = document.getElementById(`rockit-sidebar-${productId}`);
+  const overlay = document.getElementById(`rockit-sidebar-overlay-${productId}`);
+  if (sidebar) sidebar.classList.remove("open");
+  if (overlay) overlay.classList.remove("open");
+  document.body.style.overflow = "";
+}
+
 function attachCardEvents(root) {
+  // Single accordion: only one open at a time within the same root
   root.querySelectorAll('[data-action="toggle-accordion"]').forEach((btn) => {
     btn.addEventListener("click", () => {
       const card = btn.closest(".rockit-coupon-card");
+      const list = card.closest(".rockit-offers-list, .rockit-sidebar-body");
+      
+      // Close all other cards in this list
+      if (list) {
+        list.querySelectorAll(".rockit-coupon-card.is-expanded").forEach((openCard) => {
+          if (openCard !== card) openCard.classList.remove("is-expanded");
+        });
+      }
+      
       card.classList.toggle("is-expanded");
     });
   });
 
   root.querySelectorAll('[data-action="copy"]').forEach((btn) => {
     btn.addEventListener("click", async (e) => {
-      e.stopPropagation(); // prevent accordion toggle
+      e.stopPropagation();
       const code = btn.dataset.code;
       const originalText = btn.textContent;
 
@@ -209,8 +248,6 @@ function attachCardEvents(root) {
     });
   });
 }
-
-// Sidebars removed.
 
 function escapeHtml(str) {
   const div = document.createElement("div");

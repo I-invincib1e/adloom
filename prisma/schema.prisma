@@ -87,6 +87,7 @@ model Coupon {
   couponCode  String          // "BYG1"
   description String?
   style       String?         // JSON: standard, dotted, ticket, minimal
+  priority    Int             @default(0)  // Lower = higher priority (1 shows before 10)
   startTime   DateTime
   endTime     DateTime
   status      String          @default("ACTIVE")

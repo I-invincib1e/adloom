@@ -44,6 +44,7 @@ export async function createCoupon(data, shop) {
     data: {
       ...couponData,
       shop,
+      priority: parseInt(couponData.priority) || 0,
       startTime: new Date(couponData.startTime),
       endTime: new Date(couponData.endTime),
       products: {
@@ -72,6 +73,7 @@ export async function updateCoupon(id, data, shop) {
     where: { id },
     data: {
       ...couponData,
+      priority: parseInt(couponData.priority) || 0,
       startTime: new Date(couponData.startTime),
       endTime: new Date(couponData.endTime),
       products: {
@@ -95,6 +97,7 @@ export async function getCouponsForProduct(productId, productData = {}, shop) {
     include: { products: true },
   });
 
+  // Sort by priority (lower first), then by newest
   return allCoupons.filter((coupon) => {
     let style;
     try {
@@ -103,16 +106,9 @@ export async function getCouponsForProduct(productId, productData = {}, shop) {
       style = {};
     }
 
-    // New selection logic stored in style JSON for backward compatibility
-    // Actually, I should have stored it in Coupon model, but Style is a safe place for now.
-    // However, I passed it in 'products' field in the action, but it's not saved to DB unless I update the schema.
-    // Wait, the action currently sends 'style' as a JSON string. I'll put the selection config in there.
-    
-    // Check direct product association (legacy or explicit)
     const isProductMatch = coupon.products.some((p) => p.productId === productId);
     if (isProductMatch) return true;
 
-    // Check advanced criteria in style config
     const selection = style.selection || {};
     if (selection.type === "all") return true;
     
@@ -127,7 +123,6 @@ export async function getCouponsForProduct(productId, productData = {}, shop) {
 
     if (selection.type === "collections" && productData.collections) {
       const productCollectionIds = productData.collections.split(",").map(id => id.trim());
-      // selection.collections is an array of objects {id, title, ...} where id is a GID
       return (selection.collections || []).some((c) => {
         const numericId = String(c.id).replace("gid://shopify/Collection/", "");
         return productCollectionIds.includes(numericId);
@@ -135,5 +130,12 @@ export async function getCouponsForProduct(productId, productData = {}, shop) {
     }
     
     return false;
+  }).sort((a, b) => {
+    // Sort by priority ascending (lower = higher priority)
+    const pA = a.priority || 0;
+    const pB = b.priority || 0;
+    if (pA !== pB) return pA - pB;
+    // Then by newest first
+    return new Date(b.createdAt) - new Date(a.createdAt);
   });
 }

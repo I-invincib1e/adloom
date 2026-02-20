@@ -120,6 +120,7 @@ export default function NewCouponPage() {
   const [selectedVendors, setSelectedVendors] = useState([]);
   const [tagInput, setTagInput] = useState("");
   const [vendorInput, setVendorInput] = useState("");
+  const [priority, setPriority] = useState("0");
 
   // Styling State
   const [stylePreset, setStylePreset] = useState("standard");
@@ -252,6 +253,7 @@ export default function NewCouponPage() {
     formData.append("offerTitle", offerTitle);
     formData.append("couponCode", couponCode);
     formData.append("description", description);
+    formData.append("priority", priority);
     formData.append("startTime", startDateTime);
     formData.append("endTime", endDateTime);
     
@@ -338,6 +340,15 @@ export default function NewCouponPage() {
               onChange={setDescription}
               autoComplete="off"
               multiline={2}
+          />
+          <TextField
+              label="Display Priority"
+              type="number"
+              value={priority}
+              onChange={dirty(setPriority)}
+              autoComplete="off"
+              helpText="Lower number = shown first (e.g. 1 shows before 10). Default is 0."
+              min={0}
           />
         </BlockStack>
       </Card>
