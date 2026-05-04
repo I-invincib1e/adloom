@@ -10,9 +10,12 @@ export async function loader({ request }) {
   await authenticate.admin(request);
   const usage = await getPlanUsage(request);
   const url = new URL(request.url);
-  const celebrate = url.searchParams.get("celebrate") === "true";
-  const planName = url.searchParams.get("plan");
-  return json({ usage, celebrate, planName });
+  
+  // Verify that they actually upgraded (declined charges will still have upgraded=true in the URL)
+  const hasUpgradedParam = url.searchParams.get("upgraded") === "true" || url.searchParams.get("celebrate") === "true";
+  const actuallyUpgraded = hasUpgradedParam && usage.plan !== "Free";
+  
+  return json({ usage, celebrate: actuallyUpgraded, planName: usage.plan });
 }
 
 export async function action({ request }) {
@@ -33,10 +36,12 @@ export async function action({ request }) {
   /* 
    * Post-Payment Redirect Fix:
    * 1. Ensure returnUrl uses the explicit SHOPIFY_APP_URL from env to avoid mismatch.
-   * 2. The AppProvider in root.jsx will handle the session token handshake on return.
+   * 2. Append shop and host parameters so Shopify App Bridge can establish session on return.
    */
   const appUrl = process.env.SHOPIFY_APP_URL || url.origin;
-  const returnUrl = `${appUrl}/app/pricing?upgraded=true&plan=${plan}`; // Use upgraded=true per new flow
+  const hostParam = url.searchParams.get("host") || "";
+  const shopParam = url.searchParams.get("shop") || session.shop;
+  const returnUrl = `${appUrl}/app/pricing?upgraded=true&plan=${encodeURIComponent(plan)}&shop=${shopParam}&host=${hostParam}`;
 
   console.log(`[Billing Debug] SHOPIFY_APP_URL: ${process.env.SHOPIFY_APP_URL}`);
   console.log(`[Billing Debug] Requesting plan: ${plan}, isTest: ${isTest}, returnUrl: ${returnUrl}`);
@@ -370,12 +375,11 @@ export default function PricingPage() {
   const [showCelebrate, setShowCelebrate] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (celebrate || params.get('upgraded') === 'true') {
+    if (celebrate) {
       setShowCelebrate(true);
       window.history.replaceState({}, "", location.pathname);
     }
-  }, [celebrate, location.search, location.pathname]);
+  }, [celebrate, location.pathname]);
 
   const plans = [
     {
