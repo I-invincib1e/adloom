@@ -566,7 +566,7 @@ export default function NewSale() {
       backAction={{ url: "/app" }}
       primaryAction={{
         content: "Save",
-        onAction: submit,
+        onAction: handleSubmit,
         loading: isLoading,
         disabled: !allowed,
       }}

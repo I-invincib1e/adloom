@@ -14,6 +14,7 @@ import {
   Badge,
   InlineStack,
 } from "@shopify/polaris";
+import { useAppBridge } from "@shopify/app-bridge-react";
 
 export async function loader({ request }) {
   const { session } = await authenticate.admin(request);
@@ -40,6 +41,7 @@ export default function CouponsPage() {
   const submit = useSubmit();
   const [searchParams, setSearchParams] = useSearchParams();
   const actionData = useActionData();
+  const shopify = useAppBridge();
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {

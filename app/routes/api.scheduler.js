@@ -16,6 +16,7 @@ export async function loader({ request }) {
       status: "PENDING",
       startTime: { lte: now },
     },
+    include: { items: true },
   });
 
   for (const sale of salesToStart) {

@@ -8,22 +8,13 @@ export async function createTimer(data, shop) {
 export async function getTimer(id, shop) {
   const timer = await db.timer.findUnique({ where: { id } });
   if (!timer) return null;
-  // Forgiving isolation: allow access if record is 'unknown' or belongs to the shop
-  const isOrphan = ["unknown", "undefined", ""].includes(timer.shop);
-  if (!isOrphan && shop && timer.shop !== shop) return null;
+  if (shop && timer.shop !== shop) return null;
   return timer;
 }
 
 export async function getTimers(shop) {
   return db.timer.findMany({ 
-    where: { 
-      OR: [
-        { shop },
-        { shop: "unknown" },
-        { shop: "undefined" },
-        { shop: "" }
-      ]
-    },
+    where: { shop },
     orderBy: { createdAt: "desc" } 
   });
 }

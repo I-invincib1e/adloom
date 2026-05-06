@@ -82,8 +82,6 @@ export async function action({ request }) {
       details: {
         name: error.name,
         message: error.message,
-        stack: error.stack,
-        keys: Object.keys(error)
       } 
     }, { status: 500 });
   }
@@ -243,6 +241,11 @@ function PlanCard({ plan, currentPlan }) {
   const isCurrent = plan.id === currentPlan;
   
   const handleSelect = () => {
+    // Free plan doesn't go through billing.request — redirect to cancel instead
+    if (plan.id === "Free") {
+      window.location.href = "/app/cancel";
+      return;
+    }
     submit({ plan: plan.id }, { method: "post" });
   };
 

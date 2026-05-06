@@ -10,7 +10,7 @@ export default function PrivacyPage() {
           <BlockStack gap="400">
             <Text as="h2" variant="headingLg">1. Introduction</Text>
             <Text as="p" variant="bodyMd">
-              This Privacy Policy describes how [Your App Name] ("the App", "we", "us", or "our") collects, uses, and discloses your Personal Information when you install or use the App in connection with your Shopify store.
+              This Privacy Policy describes how Loom - Offer & Sales ("the App", "we", "us", or "our") collects, uses, and discloses your Personal Information when you install or use the App in connection with your Shopify store.
             </Text>
 
             <Text as="h2" variant="headingLg">2. Information We Collect</Text>
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
 
             <Text as="h2" variant="headingLg">6. Contact Us</Text>
             <Text as="p" variant="bodyMd">
-              For more information about our privacy practices, if you have questions, or if you would like to make a complaint, please contact us by e-mail at support@[your-domain].com.
+              For more information about our privacy practices, if you have questions, or if you would like to make a complaint, please contact us by e-mail at Hello@adloomx.com.
             </Text>
           </BlockStack>
         </Card>

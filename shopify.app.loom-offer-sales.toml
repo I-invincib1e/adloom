@@ -16,6 +16,10 @@ compliance_topics = [ "customers/data_request", "customers/redact", "shop/redact
 uri = "/webhooks"
 topics = [ "app/uninstalled" ]
 
+[[webhooks.subscriptions]]
+uri = "/webhooks/app/subscription_update"
+topics = [ "app/subscriptions_update" ]
+
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "write_products"

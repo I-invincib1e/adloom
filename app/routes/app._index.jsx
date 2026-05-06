@@ -112,11 +112,11 @@ export async function action({ request }) {
       
       // 2. Check global variant limit
       const variantLimitCheck = await checkGlobalVariantLimit(
-          session.shop, // Updated signature: (shop, variantIds, excludeSaleId, start, end)
-          variantIds, 
-          saleId,
+          request,
+          variantIds,
           sale.startTime,
-          sale.endTime
+          sale.endTime,
+          saleId
       );
 
       if (!variantLimitCheck.ok) {

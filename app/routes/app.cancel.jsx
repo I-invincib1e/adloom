@@ -7,7 +7,7 @@ export async function loader({ request }) {
   const { billing } = await authenticate.admin(request);
   const subscription = await billing.require({
     plans: ["Basic", "Growth", "Pro", "Basic Annual", "Growth Annual", "Pro Annual"],
-    isTest: true,
+    isTest: process.env.NODE_ENV !== "production",
     onFailure: async () => null,
   });
 
@@ -22,14 +22,14 @@ export async function action({ request }) {
   const { billing } = await authenticate.admin(request);
   const subscription = await billing.require({
     plans: ["Basic", "Growth", "Pro", "Basic Annual", "Growth Annual", "Pro Annual"],
-    isTest: true,
+    isTest: process.env.NODE_ENV !== "production",
     onFailure: async () => null,
   });
 
   if (subscription) {
     await billing.cancel({
       subscriptionId: subscription.id,
-      isTest: true,
+      isTest: process.env.NODE_ENV !== "production",
       prorate: true,
     });
   }
@@ -54,7 +54,7 @@ export default function Cancel() {
               </Text>
               <Banner tone="warning">
                 <p>
-                  Any active sales, coupons, or timers exceeding the Free plan limits (1 Sale, 2 Coupons, 1 Timer) will remain active until manually deactivated or deleted, but you won't be able to create new ones until you are within your limits.
+                  Any active sales exceeding the Free plan limit (1 Sale) will be automatically deactivated. Coupons or timers exceeding the limits (5 Coupons, 2 Timers) will remain active, but you won't be able to create new ones until you are within your limits.
                 </p>
               </Banner>
               <InlineStack align="end" gap="300">

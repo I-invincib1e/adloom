@@ -6,11 +6,11 @@ import { PLAN_LIMITS, getPlan as fetchPlanFromShopify } from "../models/billing.
 export const action = async ({ request }) => {
   const { topic, shop, payload, admin } = await authenticate.webhook(request);
 
-  if (topic !== "APP_SUBSCRIPTION_UPDATE") {
+  if (topic !== "APP_SUBSCRIPTIONS_UPDATE" && topic !== "APP_SUBSCRIPTION_UPDATE") {
     return new Response("Invalid topic", { status: 400 });
   }
 
-  console.log(`[Webhook] Received APP_SUBSCRIPTION_UPDATE for ${shop}`);
+  console.log(`[Webhook] Received APP_SUBSCRIPTIONS_UPDATE for ${shop}`);
 
   if (!admin) {
     console.error("No admin client available in webhook. Cannot reconcile sales.");

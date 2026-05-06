@@ -2,14 +2,7 @@ import db from "../db.server";
 
 export async function getCoupons(shop) {
   return db.coupon.findMany({
-    where: { 
-      OR: [
-        { shop },
-        { shop: "unknown" },
-        { shop: "undefined" },
-        { shop: "" }
-      ]
-    },
+    where: { shop },
     orderBy: { createdAt: "desc" },
     include: { products: true },
   });
@@ -21,8 +14,7 @@ export async function getCoupon(id, shop) {
     include: { products: true },
   });
   if (!coupon) return null;
-  const isOrphan = ["unknown", "undefined", ""].includes(coupon.shop);
-  if (!isOrphan && shop && coupon.shop !== shop) return null;
+  if (shop && coupon.shop !== shop) return null;
   return coupon;
 }
 
