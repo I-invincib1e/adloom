@@ -370,6 +370,7 @@ export default function PricingPage() {
   const currentPeriodEnd = usage?.currentPeriodEnd;
   const [isYearly, setIsYearly] = useState(false);
   const [showCelebrate, setShowCelebrate] = useState(false);
+  const [showDowngradeModal, setShowDowngradeModal] = useState(false);
 
   useEffect(() => {
     if (celebrate) {
@@ -380,10 +381,10 @@ export default function PricingPage() {
 
   useEffect(() => {
     if (cancelled) {
-      shopify.toast.show("Subscription cancelled. You are now on the Free plan.");
+      setShowDowngradeModal(true);
       window.history.replaceState({}, "", location.pathname);
     }
-  }, [cancelled, location.pathname, shopify]);
+  }, [cancelled, location.pathname]);
 
   const plans = [
     {
@@ -482,6 +483,22 @@ export default function PricingPage() {
       <style>{premiumStyles}</style>
       <CelebrationModal isOpen={showCelebrate} onClose={() => setShowCelebrate(false)} planName={planName} />
       
+      <Modal
+        open={showDowngradeModal}
+        onClose={() => setShowDowngradeModal(false)}
+        title="Plan Changed Successfully"
+        primaryAction={{
+          content: "Okay",
+          onAction: () => setShowDowngradeModal(false),
+        }}
+      >
+        <Modal.Section>
+          <Text as="p">
+            Your plan has been changed successfully. Because Shopify applies billing changes immediately and may issue prorated app credits for unused time, your new plan limits are now active.
+          </Text>
+        </Modal.Section>
+      </Modal>
+
       <div className="pricing-container">
         <BlockStack gap="1000">
           <Layout>
