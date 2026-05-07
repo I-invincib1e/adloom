@@ -29,6 +29,7 @@ import {
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { SearchIcon } from "@shopify/polaris-icons";
 import { StrategyExample } from "../components/StrategyExample";
+import { ActionErrorModal } from "../components/ActionErrorModal";
 
 export async function loader({ request }) {
   const { authenticate } = await import("../shopify.server");
@@ -581,20 +582,12 @@ export default function NewSale() {
           </Layout.Section>
         </Layout>
       )}
+      <ActionErrorModal />
+
       <Layout>
         <Layout.Section>
           <div className="animate-fade-in-up stagger-1">
             <BlockStack gap="400">
-            {actionData?.errors && (
-               <Banner tone="critical">
-                 <p>There were some errors with your submission</p>
-                  <ul>
-                    {Object.values(actionData.errors).map((err) => (
-                      <li key={err}>{err}</li>
-                    ))}
-                  </ul>
-               </Banner>
-             )}
 
             <div className="elite-card">
               <Card>

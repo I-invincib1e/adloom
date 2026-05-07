@@ -8,6 +8,7 @@ import { SearchIcon } from "@shopify/polaris-icons";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { DirtyStateModal } from "../components/DirtyStateModal";
 import { StrategyExample } from "../components/StrategyExample";
+import { ActionErrorModal } from "../components/ActionErrorModal";
 
 export async function loader({ request, params }) {
   console.log("Loading Sale:", params.id); // Debug Log
@@ -479,16 +480,7 @@ export default function EditSale() {
                </Banner>
             )}
 
-            {actionData?.errors && (
-               <Banner tone="critical">
-                 <p>There were some errors with your submission</p>
-                  <ul>
-                    {Object.values(actionData.errors).map((err) => (
-                      <li key={err}>{err}</li>
-                    ))}
-                  </ul>
-               </Banner>
-             )}
+            <ActionErrorModal />
 
             <div className="elite-card">
               <Card>

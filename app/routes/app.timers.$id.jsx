@@ -5,6 +5,7 @@ import { getTimer, updateTimer, deleteTimer, duplicateTimer } from "../models/ti
 import { checkLimit, checkDesignLimit } from "../models/billing.server";
 import { TimerForm } from "../components/TimerForm";
 import { DirtyStateModal } from "../components/DirtyStateModal";
+import { ActionErrorModal } from "../components/ActionErrorModal";
 import { Page, Modal, Text, BlockStack } from "@shopify/polaris";
 import { useState } from "react";
 
@@ -98,6 +99,7 @@ export default function EditTimerPage() {
       ]}
     >
       <DirtyStateModal isDirty={isDirty} />
+      <ActionErrorModal />
       <TimerForm timer={timer} onSave={handleSave} isLoading={isLoading} onDirty={() => setIsDirty(true)} designAllowed={designAllowed} />
 
       <Modal

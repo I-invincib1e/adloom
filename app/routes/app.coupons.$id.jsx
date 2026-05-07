@@ -11,6 +11,7 @@ import { getCoupon, updateCoupon } from "../models/coupon.server";
 import { checkDesignLimit } from "../models/billing.server";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { DirtyStateModal } from "../components/DirtyStateModal";
+import { ActionErrorModal } from "../components/ActionErrorModal";
 import {
   Page,
   Layout,
@@ -557,6 +558,7 @@ export default function EditCouponPage() {
   return (
     <Page title="Edit Offer" backAction={{ url: "/app/coupons" }}>
       <DirtyStateModal isDirty={isDirty} />
+      <ActionErrorModal />
       <Layout>
         <Layout.Section>
           {actionData?.success && <Banner tone="success" title={actionData.message} marginBottom="400" />}

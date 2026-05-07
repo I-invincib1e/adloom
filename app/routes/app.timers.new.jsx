@@ -5,6 +5,7 @@ import { checkLimit, checkDesignLimit } from "../models/billing.server";
 import { createTimer } from "../models/timer.server";
 import { TimerForm } from "../components/TimerForm";
 import { DirtyStateModal } from "../components/DirtyStateModal";
+import { ActionErrorModal } from "../components/ActionErrorModal";
 import { useState } from "react";
 import { Page, Layout, Banner, Button } from "@shopify/polaris";
 
@@ -63,6 +64,7 @@ export default function NewTimerPage() {
         </Layout>
       )}
       <DirtyStateModal isDirty={isDirty} />
+      <ActionErrorModal />
       <TimerForm onSave={handleSave} isLoading={isLoading} disabled={!allowed} onDirty={() => setIsDirty(true)} designAllowed={designAllowed} />
     </Page>
   );

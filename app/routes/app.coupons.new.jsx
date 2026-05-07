@@ -6,6 +6,7 @@ import { createCoupon } from "../models/coupon.server";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { checkLimit, checkDesignLimit } from "../models/billing.server";
 import { DirtyStateModal } from "../components/DirtyStateModal";
+import { ActionErrorModal } from "../components/ActionErrorModal";
 import {
   Page,
   Layout,
@@ -555,6 +556,7 @@ export default function NewCouponPage() {
   return (
     <Page title="Advanced Offer Builder" backAction={{ url: "/app/coupons" }}>
       <DirtyStateModal isDirty={isDirty} />
+      <ActionErrorModal />
       {!allowed && <Banner tone="warning" title="Limit Reached" marginBottom="400">Upgrade to create more offers.</Banner>}
       
       <Layout>
