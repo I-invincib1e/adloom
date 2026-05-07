@@ -159,7 +159,7 @@ export default function Index() {
   // Launch Track logic
   const [trackDismissed, setTrackDismissed] = useState(false);
   useEffect(() => {
-    const dismissed = localStorage.getItem("rockit_track_dismissed");
+    const dismissed = localStorage.getItem("loom_track_dismissed");
     if (dismissed) setTrackDismissed(true);
   }, []);
 
@@ -244,7 +244,7 @@ export default function Index() {
 
   const handleDismissTrack = () => {
     setTrackDismissed(true);
-    localStorage.setItem("rockit_track_dismissed", "true");
+    localStorage.setItem("loom_track_dismissed", "true");
   };
 
   const LaunchTrack = () => (

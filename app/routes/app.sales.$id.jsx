@@ -150,8 +150,7 @@ export async function action({ request, params }) {
   const discountStrategy = formData.get("discountStrategy");
   const excludeDrafts = formData.get("excludeDrafts") === "true";
   const excludeOnSale = formData.get("excludeOnSale") === "true";
-  const allowOverride = formData.get("allowOverride") === "true";
-  const deactivationStrategy = formData.get("deactivationStrategy");
+  const deactivationStrategy = formData.get("deactivationStrategy") || "RESTORE";
   const timerId = formData.get("timerId");
   const tagsToAdd = formData.get("tagsToAdd");
   const tagsToRemove = formData.get("tagsToRemove");
@@ -215,7 +214,6 @@ export async function action({ request, params }) {
     discountStrategy,
     excludeDrafts,
     excludeOnSale,
-    allowOverride,
     deactivationStrategy,
     timerId,
     tagsToAdd,
@@ -285,8 +283,7 @@ export default function EditSale() {
   const [setEndTimer, setSetEndTimer] = useState(true);
 
   // Activation / Deactivation
-  const [allowOverride, setAllowOverride] = useState(sale.allowOverride);
-  const [deactivationStrategy, setDeactivationStrategy] = useState(sale.deactivationStrategy);
+  const [deactivationStrategy, setDeactivationStrategy] = useState(sale.deactivationStrategy || "RESTORE");
 
   // Timer & Tags
   const [timerId, setTimerId] = useState(sale.timerId || "");
@@ -393,7 +390,6 @@ export default function EditSale() {
     formData.append("discountStrategy", discountStrategy);
     formData.append("excludeDrafts", excludeDrafts.toString());
     formData.append("excludeOnSale", excludeOnSale.toString());
-    formData.append("allowOverride", allowOverride.toString());
     formData.append("deactivationStrategy", deactivationStrategy);
     formData.append("timerId", timerId);
     formData.append("tagsToAdd", tagsToAdd);
@@ -835,18 +831,6 @@ export default function EditSale() {
                         </InlineStack>
                     )}
                  </BlockStack>
-            </Card>
-
-            <Card>
-                <BlockStack gap="400">
-                    <Text as="h2" variant="headingSm">Activation</Text>
-                     <Checkbox
-                        label="Allow this sale to override other Rockit discounts"
-                        checked={allowOverride}
-                        onChange={setAllowOverride}
-                        helpText="By default, Rockit skips products already discounted by another active Rockit sale. When checked, this sale will override those existing discounts."
-                    />
-                </BlockStack>
             </Card>
 
              <Card>

@@ -66,8 +66,7 @@ export async function action({ request }) {
   const discountStrategy = formData.get("discountStrategy");
   const excludeDrafts = formData.get("excludeDrafts") === "true";
   const excludeOnSale = formData.get("excludeOnSale") === "true";
-  const allowOverride = formData.get("allowOverride") === "true";
-  const deactivationStrategy = formData.get("deactivationStrategy");
+  const deactivationStrategy = formData.get("deactivationStrategy") || "RESTORE";
   const timerId = formData.get("timerId");
   const tagsToAdd = formData.get("tagsToAdd");
   const tagsToRemove = formData.get("tagsToRemove");
@@ -331,7 +330,6 @@ export async function action({ request }) {
     discountStrategy,
     excludeDrafts,
     excludeOnSale,
-    allowOverride,
     deactivationStrategy,
     timerId,
     tagsToAdd,
@@ -379,7 +377,6 @@ export default function NewSale() {
   const [setEndTimer, setSetEndTimer] = useState(true);
 
   // Activation / Deactivation
-  const [allowOverride, setAllowOverride] = useState(false);
   const [deactivationStrategy, setDeactivationStrategy] = useState("RESTORE");
 
   // Timer & Tags
@@ -547,7 +544,6 @@ export default function NewSale() {
     formData.append("discountStrategy", discountStrategy);
     formData.append("excludeDrafts", excludeDrafts.toString());
     formData.append("excludeOnSale", excludeOnSale.toString());
-    formData.append("allowOverride", allowOverride.toString());
     formData.append("deactivationStrategy", deactivationStrategy);
     formData.append("timerId", timerId);
     formData.append("tagsToAdd", tagsToAdd);
@@ -945,18 +941,6 @@ export default function NewSale() {
                         </InlineStack>
                     )}
                  </BlockStack>
-            </Card>
-
-            <Card>
-                <BlockStack gap="400">
-                    <Text as="h2" variant="headingSm">Activation</Text>
-                     <Checkbox
-                        label="Allow this sale to override other Rockit discounts"
-                        checked={allowOverride}
-                        onChange={setAllowOverride}
-                        helpText="By default, Rockit skips products already discounted by another active Rockit sale. When checked, this sale will override those existing discounts."
-                    />
-                </BlockStack>
             </Card>
 
              <Card>
