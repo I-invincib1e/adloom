@@ -133,13 +133,14 @@ export default function HelpPage() {
                   Need help? We reply within 24 hours.
                 </Text>
                 <InlineStack gap="300">
-                  <Button url="mailto:Hello@adloomx.com" icon={EmailIcon} variant="primary">
+                  <Button url="mailto:Hello@adloomx.com" icon={EmailIcon} variant="primary" target="_top">
                     Contact Support
                   </Button>
                   <Button 
                     url="mailto:Hello@adloomx.com?subject=Loom%20Feedback" 
                     icon={ChatIcon} 
                     variant="plain"
+                    target="_top"
                   >
                     Send Feedback
                   </Button>
