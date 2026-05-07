@@ -30,7 +30,12 @@ export async function action({ request }) {
   }
 
   const url = new URL(request.url);
-  const isTest = process.env.NODE_ENV !== "production";
+  // isTest: true = no real charge (safe for development stores & smoke testing)
+  // Set BILLING_TEST_MODE=true on Railway to test without real payments.
+  // Remove it before going live to real merchants.
+  const isTest =
+    process.env.BILLING_TEST_MODE === "true" ||
+    process.env.NODE_ENV !== "production";
 
   // Build a fully-qualified returnUrl with shop & host so App Bridge
   // can re-establish the session after Shopify's approval page.

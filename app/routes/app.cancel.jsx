@@ -7,7 +7,7 @@ export async function loader({ request }) {
   const { billing } = await authenticate.admin(request);
   const subscription = await billing.require({
     plans: ["Basic", "Growth", "Pro", "Basic Annual", "Growth Annual", "Pro Annual"],
-    isTest: process.env.NODE_ENV !== "production",
+    isTest: process.env.BILLING_TEST_MODE === "true" || process.env.NODE_ENV !== "production",
     onFailure: async () => null,
   });
 
