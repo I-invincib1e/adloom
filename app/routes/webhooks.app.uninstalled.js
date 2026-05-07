@@ -3,18 +3,16 @@ export const action = async ({ request }) => {
   const db = (await import("../db.server")).default;
   const { shop, session, topic } = await authenticate.webhook(request);
 
-  console.log(`Received ${topic} webhook for ${shop}`);
+  console.log(`[Webhook] Received ${topic} for ${shop}`);
 
-  // Webhook requests can trigger multiple times and after an app has already been uninstalled.
-  // If this webhook already ran, the session may have been deleted previously.
+  // ─── IMPORTANT: Only delete the session, NOT the merchant's data ───────────
+  // Shopify sends `shop/redact` 48 hours AFTER uninstall (only if not reinstalled).
+  // That is the correct and compliant time to delete sales, coupons, and timers.
+  // Deleting everything here means reinstalling merchants lose all their work.
+  // ──────────────────────────────────────────────────────────────────────────
   if (session) {
     await db.session.deleteMany({ where: { shop } });
   }
-
-  // Comprehensive cleanup
-  await db.sale.deleteMany({ where: { shop } });
-  await db.coupon.deleteMany({ where: { shop } });
-  await db.timer.deleteMany({ where: { shop } });
 
   return new Response();
 };
