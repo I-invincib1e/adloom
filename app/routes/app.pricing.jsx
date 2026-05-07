@@ -39,14 +39,14 @@ export async function action({ request }) {
     process.env.BILLING_TEST_MODE === "true" ||
     process.env.NODE_ENV !== "production";
 
-  // Build returnUrl that goes through Shopify Admin (NOT the raw app URL).
-  // Direct hits to our server lose the session token → /auth/login redirect.
-  // The correct pattern for embedded apps is to re-enter via the admin iframe.
+  // Point returnUrl at our unauthenticated /billing-return bounce route.
+  // This route lives OUTSIDE the /app tree so it won't trigger authenticate.admin().
+  // It reads the shop param and redirects the browser into the Shopify Admin
+  // iframe, where App Bridge provides the session token automatically.
+  let appUrl = process.env.SHOPIFY_APP_URL || url.origin;
+  if (appUrl.endsWith("/")) appUrl = appUrl.slice(0, -1);
   const shopParam = url.searchParams.get("shop") || shop;
-  // Extract the shop slug (e.g. "my-store" from "my-store.myshopify.com")
-  const shopSlug = shopParam.replace(".myshopify.com", "");
-  const appHandle = process.env.SHOPIFY_APP_HANDLE || "771263eab41b997e2f158c98a9dd728b";
-  const returnUrl = `https://admin.shopify.com/store/${shopSlug}/apps/${appHandle}/app/pricing?upgraded=true&plan=${encodeURIComponent(plan)}`;
+  const returnUrl = `${appUrl}/billing-return?upgraded=true&plan=${encodeURIComponent(plan)}&shop=${shopParam}`;
 
   console.log(`[Billing] shop=${shop} plan=${plan} isTest=${isTest} returnUrl=${returnUrl}`);
 
