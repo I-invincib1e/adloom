@@ -146,6 +146,7 @@ export async function createSale({
             productId: item.productId,
             variantId: item.variantId,
             originalPrice: 0, // Will be updated when applied
+            originalCompareAt: null,
           })),
         },
       },
@@ -199,6 +200,7 @@ export async function updateSale(id, {
             productId: item.productId,
             variantId: item.variantId,
             originalPrice: item.originalPrice || 0,
+            originalCompareAt: item.originalCompareAt || null,
           })),
         },
       },
@@ -327,6 +329,7 @@ export async function applySale(saleId, admin) {
                   productId: variantData.product.id, 
                   variantId: item.variantId,
                   originalPrice: currentPrice,
+                  originalCompareAt: currentCompareAt,
                   newPrice: newPrice.toFixed(2),
                   newCompareAt: newCompareAt ? newCompareAt.toFixed(2) : null,
                 });
@@ -378,7 +381,10 @@ export async function applySale(saleId, admin) {
         itemsToUpdate.map(update => 
             prisma.saleItem.update({
                 where: { id: update.id },
-                data: { originalPrice: update.originalPrice },
+                data: { 
+                  originalPrice: update.originalPrice,
+                  originalCompareAt: update.originalCompareAt
+                },
             })
         )
     );
@@ -460,12 +466,26 @@ export async function revertSale(saleId, admin) {
                 const currentCompareAt = variantData.compareAtPrice ? parseFloat(variantData.compareAtPrice) : null;
                 
                 // Edge Case 2 Solution: Price Integrity Check
-                let expectedDiscountedPrice = item.originalPrice;
-                if (sale.discountType === "PERCENTAGE") {
-                  expectedDiscountedPrice = item.originalPrice - (item.originalPrice * (sale.value / 100));
-                } else if (sale.discountType === "FIXED_AMOUNT") {
-                  expectedDiscountedPrice = item.originalPrice - sale.value;
+                const strategy = sale.discountStrategy || "COMPARE_AT";
+                let basePrice = item.originalPrice;
+                let origCompareAt = item.originalCompareAt !== null ? parseFloat(item.originalCompareAt) : null;
+                
+                if (strategy === "COMPARE_AT") {
+                  basePrice = origCompareAt || item.originalPrice;
                 }
+                
+                let expectedDiscountedPrice = basePrice;
+                if (strategy === "INCREASE_COMPARE") {
+                  expectedDiscountedPrice = item.originalPrice;
+                } else {
+                  if (sale.discountType === "PERCENTAGE") {
+                    expectedDiscountedPrice = basePrice - (basePrice * (sale.value / 100));
+                  } else if (sale.discountType === "FIXED_AMOUNT") {
+                    expectedDiscountedPrice = basePrice - sale.value;
+                  }
+                }
+                
+                if (expectedDiscountedPrice < 0) expectedDiscountedPrice = 0;
 
                 if (Math.abs(currentPrice - expectedDiscountedPrice) > 0.01 && !["0.00", "0"].includes(currentPrice.toFixed(2))) {
                    console.warn(`[RevertSale] Manual price change detected for variant ${item.variantId}. Expected ${expectedDiscountedPrice}, found ${currentPrice}. Preserving manual change.`);
@@ -473,7 +493,7 @@ export async function revertSale(saleId, admin) {
                 }
 
                 let targetPrice = String(item.originalPrice);
-                let targetCompareAt = null; 
+                let targetCompareAt = item.originalCompareAt !== null ? String(item.originalCompareAt) : null; 
                 
                 if (sale.deactivationStrategy === "REPLACE_WITH_COMPARE" && currentCompareAt) {
                   targetPrice = String(currentCompareAt);

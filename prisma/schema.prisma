@@ -66,6 +66,7 @@ model SaleItem {
   productId     String
   variantId     String
   originalPrice Float
+  originalCompareAt Float?
 }
 
 model Timer {
