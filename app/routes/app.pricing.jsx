@@ -3,6 +3,7 @@ import { Page, Layout, Text, BlockStack, InlineStack, Button, Icon, Divider, Box
 import { StarFilledIcon } from "@shopify/polaris-icons";
 import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useSubmit, useActionData, useLocation } from "@remix-run/react";
+import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { getPlanUsage } from "../models/billing.server";
 
@@ -14,8 +15,9 @@ export async function loader({ request }) {
   // Verify that they actually upgraded (declined charges will still have upgraded=true in the URL)
   const hasUpgradedParam = url.searchParams.get("upgraded") === "true" || url.searchParams.get("celebrate") === "true";
   const actuallyUpgraded = hasUpgradedParam && usage.plan !== "Free";
+  const cancelled = url.searchParams.get("cancelled") === "true";
   
-  return json({ usage, celebrate: actuallyUpgraded, planName: usage.plan });
+  return json({ usage, celebrate: actuallyUpgraded, cancelled, planName: usage.plan });
 }
 
 export async function action({ request }) {
@@ -356,9 +358,10 @@ function CelebrationModal({ isOpen, onClose, planName }) {
 }
 
 export default function PricingPage() {
-  const { usage, celebrate, planName } = useLoaderData();
+  const { usage, celebrate, cancelled, planName } = useLoaderData();
   const actionData = useActionData();
   const location = useLocation();
+  const shopify = useAppBridge();
   const currentPlan = usage?.plan || "Free";
   const hasEverPurchased = usage?.hasEverPurchased || false;
   const trialDaysRemaining = usage?.trialDaysRemaining || 0;
@@ -371,6 +374,13 @@ export default function PricingPage() {
       window.history.replaceState({}, "", location.pathname);
     }
   }, [celebrate, location.pathname]);
+
+  useEffect(() => {
+    if (cancelled) {
+      shopify.toast.show("Subscription cancelled. You are now on the Free plan.");
+      window.history.replaceState({}, "", location.pathname);
+    }
+  }, [cancelled, location.pathname, shopify]);
 
   const plans = [
     {
