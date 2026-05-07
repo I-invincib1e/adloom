@@ -487,11 +487,33 @@ export async function revertSale(saleId, admin) {
                 
                 if (expectedDiscountedPrice < 0) expectedDiscountedPrice = 0;
 
-                if (Math.abs(currentPrice - expectedDiscountedPrice) > 0.01 && !["0.00", "0"].includes(currentPrice.toFixed(2))) {
-                   console.warn(`[RevertSale] Manual price change detected for variant ${item.variantId}. Expected ${expectedDiscountedPrice}, found ${currentPrice}. Preserving manual change.`);
-                   continue; 
+                let expectedCompareAt = origCompareAt;
+                if (strategy === "COMPARE_AT") {
+                  expectedCompareAt = basePrice;
+                } else if (strategy === "USE_CURRENT_AS_COMPARE") {
+                  expectedCompareAt = item.originalPrice;
+                }
+                
+                if (strategy === "INCREASE_COMPARE") {
+                  let discountAmount = 0;
+                  if (sale.discountType === "PERCENTAGE") discountAmount = basePrice * (sale.value / 100);
+                  else if (sale.discountType === "FIXED_AMOUNT") discountAmount = sale.value;
+                  expectedCompareAt = item.originalPrice + discountAmount;
                 }
 
+                const priceChanged = Math.abs(currentPrice - expectedDiscountedPrice) > 0.01 && !["0.00", "0"].includes(currentPrice.toFixed(2));
+                
+                let compareAtChanged = false;
+                if (currentCompareAt !== null || expectedCompareAt !== null) {
+                   if (currentCompareAt === null || expectedCompareAt === null || Math.abs(currentCompareAt - expectedCompareAt) > 0.01) {
+                       compareAtChanged = true;
+                   }
+                }
+
+                if (priceChanged || compareAtChanged) {
+                   console.warn(`[RevertSale] Manual change detected for variant ${item.variantId}. Expected Price: ${expectedDiscountedPrice}, Found: ${currentPrice}. Expected CompareAt: ${expectedCompareAt}, Found: ${currentCompareAt}. Preserving manual change.`);
+                   continue; 
+                }
                 let targetPrice = String(item.originalPrice);
                 let targetCompareAt = item.originalCompareAt !== null ? String(item.originalCompareAt) : null; 
                 
