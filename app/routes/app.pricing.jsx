@@ -357,6 +357,8 @@ export default function PricingPage() {
   const actionData = useActionData();
   const location = useLocation();
   const currentPlan = usage?.plan || "Free";
+  const hasEverPurchased = usage?.hasEverPurchased || false;
+  const trialDaysRemaining = usage?.trialDaysRemaining || 0;
   const [isYearly, setIsYearly] = useState(false);
   const [showCelebrate, setShowCelebrate] = useState(false);
 
@@ -401,7 +403,12 @@ export default function PricingPage() {
         "Fast support",
       ],
       description: "For growing stores.",
-      trial: "7-day free trial",
+      // Show trial only if merchant has never purchased; show remaining days if currently trialing
+      trial: !hasEverPurchased
+        ? (trialDaysRemaining > 0 && currentPlan === "Basic"
+            ? `${trialDaysRemaining} days left in trial`
+            : "7-day free trial")
+        : null,
       buttonLabel: "Choose Basic",
       highlighted: false,
     },
@@ -421,7 +428,11 @@ export default function PricingPage() {
         "Advanced Analytics",
       ],
       description: "For established brands.",
-      trial: "7-day free trial",
+      trial: !hasEverPurchased
+        ? (trialDaysRemaining > 0 && (currentPlan === "Growth" || currentPlan === "Growth Annual")
+            ? `${trialDaysRemaining} days left in trial`
+            : "7-day free trial")
+        : null,
       buttonLabel: "Choose Growth",
       highlighted: true,
     },
@@ -440,7 +451,11 @@ export default function PricingPage() {
         "Priority Support",
       ],
       description: "For high-volume stores.",
-      trial: "7-day free trial",
+      trial: !hasEverPurchased
+        ? (trialDaysRemaining > 0 && (currentPlan === "Pro" || currentPlan === "Pro Annual")
+            ? `${trialDaysRemaining} days left in trial`
+            : "7-day free trial")
+        : null,
       buttonLabel: "Choose Pro",
       highlighted: false,
     },

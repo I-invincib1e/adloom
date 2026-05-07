@@ -8,6 +8,12 @@ export const PLAN_LIMITS = {
   Pro: { variants: Infinity, activeCoupons: Infinity, timers: Infinity, design: true, maxSales: Infinity },
 };
 
+/**
+ * Returns current plan name AND whether the merchant is still eligible for
+ * a free trial (i.e., they have never activated a paid subscription before).
+ * Shopify gives one trial per plan-name per shop lifetime, but we show/hide
+ * the trial badge globally: if they've ever had ANY paid sub, hide all trials.
+ */
 export async function getPlan(request) {
   const { admin } = await authenticate.admin(request);
   
@@ -18,33 +24,63 @@ export async function getPlan(request) {
           activeSubscriptions {
             name
             status
+            trialDays
+            currentPeriodEnd
+          }
+          allSubscriptions(first: 10) {
+            edges {
+              node {
+                name
+                status
+                createdAt
+              }
+            }
           }
         }
       }
     `);
 
     const data = await response.json();
-    const subscriptions = data?.data?.appInstallation?.activeSubscriptions || [];
-    const activeSub = subscriptions.find(sub => sub.status === "ACTIVE");
-    
-    if (!activeSub) return "Free";
+    const install = data?.data?.appInstallation;
+    const activeSubscriptions = install?.activeSubscriptions || [];
+    const allSubscriptions = install?.allSubscriptions?.edges?.map(e => e.node) || [];
 
-    const name = activeSub.name.toLowerCase();
-    if (name.includes("pro")) return "Pro";
-    if (name.includes("growth")) return "Growth";
-    if (name.includes("basic")) return "Basic";
-    
-    return "Free";
+    // Current active plan
+    const activeSub = activeSubscriptions.find(sub => sub.status === "ACTIVE");
+    let plan = "Free";
+    let trialDaysRemaining = 0;
+
+    if (activeSub) {
+      const name = activeSub.name.toLowerCase();
+      if (name.includes("pro")) plan = "Pro";
+      else if (name.includes("growth")) plan = "Growth";
+      else if (name.includes("basic")) plan = "Basic";
+
+      // Check if currently in trial
+      if (activeSub.trialDays > 0 && activeSub.currentPeriodEnd) {
+        const trialEnd = new Date(activeSub.currentPeriodEnd);
+        const now = new Date();
+        trialDaysRemaining = Math.max(0, Math.ceil((trialEnd - now) / 86400000));
+      }
+    }
+
+    // Has this shop EVER had any paid subscription (active, expired, cancelled)?
+    // If yes → they've used a trial already → don't show trial badge
+    const hasEverPurchased = allSubscriptions.some(sub =>
+      sub.status !== "DECLINED" && sub.status !== "PENDING"
+    );
+
+    return { plan, trialDaysRemaining, hasEverPurchased };
   } catch (error) {
     console.error("Error fetching plan via GraphQL:", error);
-    return "Free";
+    return { plan: "Free", trialDaysRemaining: 0, hasEverPurchased: false };
   }
 }
 
 export async function getPlanUsage(request) {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
-  const plan = await getPlan(request);
+  const { plan, trialDaysRemaining, hasEverPurchased } = await getPlan(request);
   const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.Free;
 
   // Get total unique variants across ALL active sales
@@ -81,6 +117,8 @@ export async function getPlanUsage(request) {
 
   return {
     plan,
+    trialDaysRemaining,
+    hasEverPurchased,
     totalSales: { used: allSales.length, limit: limits.maxSales },
     activeSales: { used: activeSales.length, limit: Infinity },
     variants: { used: variantCount, limit: limits.variants },
@@ -88,6 +126,7 @@ export async function getPlanUsage(request) {
     timers: { used: activeTimers, limit: limits.timers },
   };
 }
+
 
 export async function checkLimit(request, feature) {
   const usage = await getPlanUsage(request);
@@ -158,7 +197,7 @@ export async function checkGlobalVariantLimit(request, newVariantIds, targetStar
 }
 
 export async function checkDesignLimit(request) {
-    const plan = await getPlan(request);
+    const { plan } = await getPlan(request);
     // Growth and Pro allow custom designs
     if (plan === "Growth" || plan === "Pro") return true; 
     return false;

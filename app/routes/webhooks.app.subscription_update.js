@@ -30,8 +30,9 @@ export const action = async ({ request }) => {
             else if (name.includes("basic")) plan = "Basic";
         }
     } else {
-        // Fallback: Fetch from Shopify if payload is incomplete (unlikely for this webhook)
-        plan = await fetchPlanFromShopify(request);
+        // Fallback: Fetch from Shopify if payload is incomplete
+        const result = await fetchPlanFromShopify(request);
+        plan = result.plan || "Free";
     }
     
     const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.Free;
