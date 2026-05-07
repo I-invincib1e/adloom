@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Page, Layout, Text, BlockStack, InlineStack, Button, Icon, Divider, Box, Banner, Modal } from "@shopify/polaris";
 import { StarFilledIcon } from "@shopify/polaris-icons";
 import { json, redirect } from "@remix-run/node";
-import { useLoaderData, useSubmit, useActionData, useLocation } from "@remix-run/react";
+import { useLoaderData, useSubmit, useActionData, useLocation, useNavigate } from "@remix-run/react";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { getPlanUsage } from "../models/billing.server";
@@ -225,12 +225,14 @@ function UsageBar({ label, used, limit }) {
 
 function PlanCard({ plan, currentPlan }) {
   const submit = useSubmit();
+  const navigate = useNavigate();
   const isCurrent = plan.id === currentPlan;
   
   const handleSelect = () => {
-    // Free plan doesn't go through billing.request — redirect to cancel instead
+    // Free plan doesn't go through billing.request — navigate to cancel instead.
+    // MUST use Remix navigate to preserve App Bridge session token!
     if (plan.id === "Free") {
-      window.location.href = "/app/cancel";
+      navigate("/app/cancel");
       return;
     }
     submit({ plan: plan.id }, { method: "post" });
