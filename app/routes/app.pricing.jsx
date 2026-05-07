@@ -366,6 +366,8 @@ export default function PricingPage() {
   const currentPlan = usage?.plan || "Free";
   const hasEverPurchased = usage?.hasEverPurchased || false;
   const trialDaysRemaining = usage?.trialDaysRemaining || 0;
+  const activeFrom = usage?.activeFrom;
+  const currentPeriodEnd = usage?.currentPeriodEnd;
   const [isYearly, setIsYearly] = useState(false);
   const [showCelebrate, setShowCelebrate] = useState(false);
 
@@ -493,11 +495,21 @@ export default function PricingPage() {
               <div className="minimal-usage-card">
                 <Box padding="800">
                   <BlockStack gap="600">
-                    <BlockStack gap="100">
+                    <BlockStack gap="200">
                       <Text as="h2" variant="headingMd" fontWeight="bold">Account Overview</Text>
                       <Text as="p" variant="bodySm" tone="subdued" fontWeight="medium">
                         Current plan: <Text as="span" fontWeight="bold" tone="base">{currentPlan}</Text>
                       </Text>
+                      {currentPlan !== "Free" && activeFrom && currentPeriodEnd && (
+                        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                          <Text as="p" variant="bodyXs" tone="subdued">
+                            Active since: <Text as="span" fontWeight="medium">{new Date(activeFrom).toLocaleDateString()}</Text>
+                          </Text>
+                          <Text as="p" variant="bodyXs" tone="subdued">
+                            Renews on: <Text as="span" fontWeight="medium">{new Date(currentPeriodEnd).toLocaleDateString()}</Text>
+                          </Text>
+                        </div>
+                      )}
                     </BlockStack>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "40px" }}>
                       <UsageBar label="Variant Limit" used={usage.variants?.used} limit={usage.variants?.limit} />

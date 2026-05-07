@@ -26,6 +26,7 @@ export async function getPlan(request) {
             status
             trialDays
             currentPeriodEnd
+            createdAt
           }
           allSubscriptions(first: 10) {
             edges {
@@ -49,12 +50,17 @@ export async function getPlan(request) {
     const activeSub = activeSubscriptions.find(sub => sub.status === "ACTIVE");
     let plan = "Free";
     let trialDaysRemaining = 0;
+    let activeFrom = null;
+    let currentPeriodEnd = null;
 
     if (activeSub) {
       const name = activeSub.name.toLowerCase();
       if (name.includes("pro")) plan = "Pro";
       else if (name.includes("growth")) plan = "Growth";
       else if (name.includes("basic")) plan = "Basic";
+
+      activeFrom = activeSub.createdAt;
+      currentPeriodEnd = activeSub.currentPeriodEnd;
 
       // Check if currently in trial
       if (activeSub.trialDays > 0 && activeSub.currentPeriodEnd) {
@@ -70,7 +76,7 @@ export async function getPlan(request) {
       sub.status !== "DECLINED" && sub.status !== "PENDING"
     );
 
-    return { plan, trialDaysRemaining, hasEverPurchased };
+    return { plan, trialDaysRemaining, hasEverPurchased, activeFrom, currentPeriodEnd };
   } catch (error) {
     console.error("Error fetching plan via GraphQL:", error);
     return { plan: "Free", trialDaysRemaining: 0, hasEverPurchased: false };
@@ -80,7 +86,7 @@ export async function getPlan(request) {
 export async function getPlanUsage(request) {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
-  const { plan, trialDaysRemaining, hasEverPurchased } = await getPlan(request);
+  const { plan, trialDaysRemaining, hasEverPurchased, activeFrom, currentPeriodEnd } = await getPlan(request);
   const limits = PLAN_LIMITS[plan] || PLAN_LIMITS.Free;
 
   // Get total unique variants across ALL active sales
@@ -119,6 +125,8 @@ export async function getPlanUsage(request) {
     plan,
     trialDaysRemaining,
     hasEverPurchased,
+    activeFrom,
+    currentPeriodEnd,
     totalSales: { used: allSales.length, limit: limits.maxSales },
     activeSales: { used: activeSales.length, limit: Infinity },
     variants: { used: variantCount, limit: limits.variants },
