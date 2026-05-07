@@ -6,7 +6,7 @@ import { PLAN_LIMITS, getPlan as fetchPlanFromShopify } from "../models/billing.
 export const action = async ({ request }) => {
   const { topic, shop, payload, admin } = await authenticate.webhook(request);
 
-  if (topic !== "APP_SUBSCRIPTIONS_UPDATE" && topic !== "APP_SUBSCRIPTION_UPDATE") {
+  if (topic !== "APP_SUBSCRIPTIONS_UPDATE") {
     return new Response("Invalid topic", { status: 400 });
   }
 
