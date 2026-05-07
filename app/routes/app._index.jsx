@@ -131,14 +131,14 @@ export async function action({ request }) {
       }
 
       const count = await applySale(saleId, admin);
-      return json({ success: true, count });
+      return json({ success: true, action, count });
     } else if (action === "bulkDelete") {
       const ids = formData.get("ids")?.split(",") || [];
       for (const id of ids) {
         await deleteSale(id, admin);
       }
     }
-    return json({ success: true });
+    return json({ success: true, action });
   } catch (error) {
     console.error("Action failed:", error);
     return json({ success: false, error: error.message || "An unexpected error occurred" }, { status: 500 });
@@ -214,7 +214,17 @@ export default function Index() {
   }, [showSuccessBanner, updatedCount, shopify]);
 
   useEffect(() => {
-    if (actionData?.error) {
+    if (actionData?.success) {
+      if (actionData.action === "revert" || actionData.action === "bulkDeactivate") {
+        shopify.toast.show("Sale paused successfully");
+      } else if (actionData.action === "delete" || actionData.action === "bulkDelete") {
+        shopify.toast.show("Sale deleted successfully");
+      } else if (actionData.action === "activate") {
+        shopify.toast.show(`Sale activated — ${actionData.count} prices updated`);
+      } else {
+        shopify.toast.show("Action successful");
+      }
+    } else if (actionData?.error) {
        if (actionData.error.includes("Conflict detected")) {
           setConflictError(actionData.error);
        } else {
