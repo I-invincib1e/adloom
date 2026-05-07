@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Page, Layout, Text, BlockStack, InlineStack, Button, Icon, Divider, Box, Banner, Modal } from "@shopify/polaris";
 import { StarFilledIcon } from "@shopify/polaris-icons";
-import { json } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useSubmit, useActionData, useLocation } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { getPlanUsage } from "../models/billing.server";
@@ -24,66 +24,44 @@ export async function action({ request }) {
   const formData = await request.formData();
   const plan = formData.get("plan");
 
-  console.log(`[Billing Debug] Action started for shop: ${shop}`);
-  console.log(`[Billing Debug] Form data plan: ${plan}`);
+  // Free plan has no charge — redirect to cancel/downgrade page
+  if (!plan || plan === "Free") {
+    return redirect("/app/cancel");
+  }
 
   const url = new URL(request.url);
-  // Reverting to dynamic isTest to be safe. 
-  // If shop is active dev store, it should be true. If it's a real store on a trial, false.
-  // For now, let's trust the shop domain check or defaulting to false for production readiness.
-  // Disable test charges in production (Railway), enable in dev.
   const isTest = process.env.NODE_ENV !== "production";
-  /* 
-   * Post-Payment Redirect Fix:
-   * 1. Ensure returnUrl uses the explicit SHOPIFY_APP_URL from env to avoid mismatch.
-   * 2. Append shop and host parameters so Shopify App Bridge can establish session on return.
-   */
+
+  // Build a fully-qualified returnUrl with shop & host so App Bridge
+  // can re-establish the session after Shopify's approval page.
   const appUrl = process.env.SHOPIFY_APP_URL || url.origin;
   const hostParam = url.searchParams.get("host") || "";
-  const shopParam = url.searchParams.get("shop") || session.shop;
+  const shopParam = url.searchParams.get("shop") || shop;
   const returnUrl = `${appUrl}/app/pricing?upgraded=true&plan=${encodeURIComponent(plan)}&shop=${shopParam}&host=${hostParam}`;
 
-  console.log(`[Billing Debug] SHOPIFY_APP_URL: ${process.env.SHOPIFY_APP_URL}`);
-  console.log(`[Billing Debug] Requesting plan: ${plan}, isTest: ${isTest}, returnUrl: ${returnUrl}`);
+  console.log(`[Billing] shop=${shop} plan=${plan} isTest=${isTest} returnUrl=${returnUrl}`);
 
   try {
     const confirmation = await billing.request({
-      plan: plan,
-      isTest: isTest,
+      plan,
+      isTest,
       returnUrl,
     });
-    console.log(`[Billing Debug] Request successful. Redirecting to:`, confirmation);
-    return confirmation;
-  } catch (error) {
-    if (error instanceof Response) {
-        console.log(`[Billing Debug] Caught Redirect Response (Normal Flow)`);
-        throw error;
-    }
-    
-    console.error("[Billing Debug] Request failed with error:", error);
-    console.error("[Billing Debug] Error Name:", error.name);
-    console.error("[Billing Debug] Error Message:", error.message);
-    
-    // Log all enumerable keys to see what's hidden
-    try {
-      console.error("[Billing Debug] Error Keys:", Object.keys(error));
-      console.error("[Billing Debug] Error Stringified:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    } catch (e) {
-      console.error("[Billing Debug] Could not stringify error:", e);
-    }
 
-    if (error.errorData) {
-      console.error("[Billing Debug] Error Data:", JSON.stringify(error.errorData, null, 2));
-      return json({ error: "Billing Error", details: error.errorData }, { status: 400 });
+    // confirmation.confirmationUrl is the Shopify-hosted page with the Approve button.
+    // We MUST redirect there — returning the object directly breaks the flow.
+    return redirect(confirmation.confirmationUrl);
+  } catch (error) {
+    // The Shopify billing API throws a Response redirect on success in some SDK versions.
+    // Re-throw it so Remix handles the redirect correctly.
+    if (error instanceof Response) {
+      throw error;
     }
-    
-    return json({ 
-      error: error.message || "An unexpected error occurred", 
-      details: {
-        name: error.name,
-        message: error.message,
-      } 
-    }, { status: 500 });
+    console.error("[Billing] error:", error.message);
+    return json(
+      { error: error.message || "Billing error", details: { name: error.name } },
+      { status: 500 }
+    );
   }
 }
 
