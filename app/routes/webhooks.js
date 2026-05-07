@@ -8,18 +8,27 @@ export const action = async ({ request }) => {
 
     switch (topic) {
       case "APP_UNINSTALLED":
+        // Only delete the session, NOT the merchant's data.
+        // Shopify sends SHOP_REDACT 48h later if they don't reinstall.
         if (session) {
           await db.session.deleteMany({ where: { shop } });
         }
+        break;
+
+      case "SHOP_REDACT":
+        // Shopify sends this 48h after uninstall if merchant hasn't reinstalled.
+        // This is the correct time to permanently delete all data.
+        console.log(`[GDPR] Deleting all data for shop: ${shop}`);
         await db.sale.deleteMany({ where: { shop } });
         await db.coupon.deleteMany({ where: { shop } });
         await db.timer.deleteMany({ where: { shop } });
+        await db.session.deleteMany({ where: { shop } });
         break;
 
       case "CUSTOMERS_DATA_REQUEST":
       case "CUSTOMERS_REDACT":
-      case "SHOP_REDACT":
-        console.log(`[GDPR] Processing ${topic} for ${shop}`);
+        // Our app stores no personal customer data (only product/variant IDs).
+        console.log(`[GDPR] Processing ${topic} for ${shop}. No personal data stored.`);
         break;
         
       default:

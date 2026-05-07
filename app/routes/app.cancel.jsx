@@ -20,16 +20,17 @@ export async function loader({ request }) {
 
 export async function action({ request }) {
   const { billing } = await authenticate.admin(request);
+  const isTest = process.env.BILLING_TEST_MODE === "true" || process.env.NODE_ENV !== "production";
   const subscription = await billing.require({
     plans: ["Basic", "Growth", "Pro", "Basic Annual", "Growth Annual", "Pro Annual"],
-    isTest: process.env.NODE_ENV !== "production",
+    isTest,
     onFailure: async () => null,
   });
 
   if (subscription) {
     await billing.cancel({
       subscriptionId: subscription.id,
-      isTest: process.env.NODE_ENV !== "production",
+      isTest,
       prorate: true,
     });
   }

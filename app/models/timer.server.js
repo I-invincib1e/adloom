@@ -34,6 +34,14 @@ export async function updateTimer(id, data, shop) {
 export async function deleteTimer(id, shop) {
   const timer = await getTimer(id, shop);
   if (!timer) throw new Error("Unauthorized or Not Found");
+
+  // Unlink any sales referencing this timer before deleting
+  // (prevents foreign key constraint violation)
+  await db.sale.updateMany({
+    where: { timerId: id },
+    data: { timerId: null },
+  });
+
   return db.timer.delete({ where: { id } });
 }
 
