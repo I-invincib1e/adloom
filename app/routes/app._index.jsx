@@ -55,19 +55,26 @@ export async function loader({ request }) {
   const { getSales } = await import("../models/sale.server");
   const { getTimers } = await import("../models/timer.server");
   const { getCoupons } = await import("../models/coupon.server");
+  const { getPlanUsage } = await import("../models/billing.server");
   
   try {
-    const [sales, timers, coupons] = await Promise.all([
+    const [sales, timers, coupons, usage] = await Promise.all([
       getSales(session.shop),
       getTimers(session.shop),
-      getCoupons(session.shop)
+      getCoupons(session.shop),
+      getPlanUsage(request),
     ]);
-    return json({ sales, timers, coupons });
+
+    // A reinstalled merchant: they have history but are currently on Free (no active subscription)
+    const isReinstall = usage.hasEverPurchased && usage.plan === "Free";
+
+    return json({ sales, timers, coupons, usage, isReinstall });
   } catch (error) {
     console.error("Loader failed:", error);
     throw new Response("Failed to load dashboard data", { status: 500 });
   }
 }
+
 
 export async function action({ request }) {
   const { authenticate } = await import("../shopify.server");
@@ -139,7 +146,7 @@ export async function action({ request }) {
 }
 
 export default function Index() {
-  const { sales = [], timers = [], coupons = [] } = useLoaderData() || {};
+  const { sales = [], timers = [], coupons = [], isReinstall = false } = useLoaderData() || {};
   const actionData = useActionData();
   const navigate = useNavigate();
   const submit = useSubmit();
@@ -232,6 +239,19 @@ export default function Index() {
 
   const LaunchTrack = () => (
     <div className="animate-fade-in-up stagger-1">
+      {isReinstall && (
+        <Banner
+          title="Welcome back! Your account is on the Free plan"
+          tone="warning"
+          action={{ content: "Choose a plan", url: "/app/pricing" }}
+          onDismiss={() => {}}
+        >
+          <p>
+            You previously had a paid subscription. Please select a plan to restore your limits.
+            Note: Shopify does not offer a new free trial if you have used one before.
+          </p>
+        </Banner>
+      )}
       <Card padding="500">
       <BlockStack gap="500">
         <InlineStack align="space-between" verticalAlign="center">
