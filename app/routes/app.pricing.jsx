@@ -39,7 +39,10 @@ export async function action({ request }) {
 
   // Build a fully-qualified returnUrl with shop & host so App Bridge
   // can re-establish the session after Shopify's approval page.
-  const appUrl = process.env.SHOPIFY_APP_URL || url.origin;
+  let appUrl = process.env.SHOPIFY_APP_URL || url.origin;
+  if (appUrl.endsWith('/')) {
+    appUrl = appUrl.slice(0, -1);
+  }
   const hostParam = url.searchParams.get("host") || "";
   const shopParam = url.searchParams.get("shop") || shop;
   const returnUrl = `${appUrl}/app/pricing?upgraded=true&plan=${encodeURIComponent(plan)}&shop=${shopParam}&host=${hostParam}`;
