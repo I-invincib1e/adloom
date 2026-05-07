@@ -17,39 +17,102 @@ export default function App() {
   const { showForm } = useLoaderData();
 
   return (
-    <div className={styles.index}>
-      <div className={styles.content}>
-        <h1 className={styles.heading}>A short heading about [your app]</h1>
-        <p className={styles.text}>
-          A tagline about [your app] that describes your value proposition.
+    <div className={styles.page}>
+      {/* Nav */}
+      <header className={styles.nav}>
+        <div className={styles.logo}>
+          <span className={styles.logoIcon}>⚡</span>
+          <span className={styles.logoText}>Loom</span>
+          <span className={styles.logoSub}> · Offer & Sales</span>
+        </div>
+        <a
+          href="https://apps.shopify.com"
+          className={styles.navCta}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Install on Shopify
+        </a>
+      </header>
+
+      {/* Hero */}
+      <section className={styles.hero}>
+        <div className={styles.heroBadge}>🚀 Built for Shopify Merchants</div>
+        <h1 className={styles.heroHeading}>
+          Run flash sales, timers &amp; offers —<br />
+          <span className={styles.heroAccent}>without the complexity.</span>
+        </h1>
+        <p className={styles.heroSub}>
+          Loom lets you schedule price discounts, add urgency with countdown
+          timers, and show personalised coupon banners — all from one simple
+          dashboard.
         </p>
+
         {showForm && (
           <Form className={styles.form} method="post" action="/auth/login">
-            <label className={styles.label}>
-              <span>Shop domain</span>
-              <input className={styles.input} type="text" name="shop" />
-              <span>e.g: my-shop-domain.myshopify.com</span>
-            </label>
-            <button className={styles.button} type="submit">
-              Log in
-            </button>
+            <div className={styles.formInner}>
+              <input
+                className={styles.input}
+                type="text"
+                name="shop"
+                placeholder="your-store.myshopify.com"
+                autoComplete="off"
+              />
+              <button className={styles.button} type="submit">
+                Get Started →
+              </button>
+            </div>
+            <p className={styles.formHint}>
+              Enter your Shopify store domain to install the app.
+            </p>
           </Form>
         )}
-        <ul className={styles.list}>
-          <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
-          </li>
-          <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
-          </li>
-          <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
-          </li>
-        </ul>
-      </div>
+      </section>
+
+      {/* Features */}
+      <section className={styles.features}>
+        <div className={styles.featureCard}>
+          <div className={styles.featureIcon}>🏷️</div>
+          <h3 className={styles.featureTitle}>Flash Sales</h3>
+          <p className={styles.featureText}>
+            Schedule automatic price discounts across any products or
+            collections. Sales revert on their own — no manual work needed.
+          </p>
+        </div>
+        <div className={styles.featureCard}>
+          <div className={styles.featureIcon}>⏱️</div>
+          <h3 className={styles.featureTitle}>Countdown Timers</h3>
+          <p className={styles.featureText}>
+            Add urgency to product pages with beautiful, customisable countdown
+            timers that match your store's brand.
+          </p>
+        </div>
+        <div className={styles.featureCard}>
+          <div className={styles.featureIcon}>🎁</div>
+          <h3 className={styles.featureTitle}>Coupon Offers</h3>
+          <p className={styles.featureText}>
+            Display targeted coupon banners to the right customers at the right
+            time — by product, collection, tag, or vendor.
+          </p>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className={styles.footer}>
+        <p>
+          © {new Date().getFullYear()} Loom · Offer &amp; Sales &nbsp;|&nbsp;
+          <a className={styles.footerLink} href="/privacypage">
+            Privacy Policy
+          </a>
+          &nbsp;|&nbsp;
+          <a
+            className={styles.footerLink}
+            href="mailto:Hello@adloomx.com"
+          >
+            Hello@adloomx.com
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
